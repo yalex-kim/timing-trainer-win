@@ -257,5 +257,44 @@ export function useInputHandler({
     };
   }, [enableGamepad, onInput]);
 
+  // ============================================================================
+  // Serial Port 입력 처리 (Electron IPC)
+  // ============================================================================
+
+  useEffect(() => {
+    // window.electronAPI가 존재할 때만 등록
+    if (window.electronAPI) {
+      window.electronAPI.onData((data: string) => {
+        console.log('Serial Data:', data);
+        
+        // 데이터 파싱 로직 (예: "LEFT_HAND", "1", "A" 등)
+        // 여기서는 간단히 매핑 테이블을 사용하거나 규칙을 정해야 함
+        let inputType: InputType | null = null;
+
+        // 예시 프로토콜:
+        // L = Left Hand
+        // R = Right Hand
+        // F = Left Foot
+        // G = Right Foot
+        const command = data.trim().toUpperCase();
+        
+        if (command === 'L' || command === 'LEFT_HAND') inputType = 'left-hand';
+        else if (command === 'R' || command === 'RIGHT_HAND') inputType = 'right-hand';
+        else if (command === 'F' || command === 'LEFT_FOOT') inputType = 'left-foot';
+        else if (command === 'G' || command === 'RIGHT_FOOT') inputType = 'right-foot';
+
+        if (inputType) {
+          const inputEvent: InputEvent = {
+            type: inputType,
+            timestamp: performance.now(), // timestamp 조정 필요시 로직 추가
+            source: 'serial',
+            rawData: { data },
+          };
+          onInput(inputEvent);
+        }
+      });
+    }
+  }, [onInput]);
+
   return null;
 }
