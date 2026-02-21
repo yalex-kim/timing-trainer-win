@@ -41,7 +41,7 @@ export function calculateAge(birthDate: string): number {
 /**
  * 나이를 연령대 그룹으로 변환
  */
-function getAgeGroup(age: number): AgeGroup {
+export function getAgeGroup(age: number): AgeGroup {
   if (age <= 7) return 'under7';
   if (age <= 9) return '8-9';
   if (age <= 11) return '10-11';
