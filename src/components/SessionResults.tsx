@@ -5,7 +5,7 @@
 
 'use client';
 
-import { SessionResults as SessionResultsType, InputType } from '@/types/evaluation';
+import type { SessionResults as SessionResultsType, InputType } from '@/types/evaluation';
 import { getClassInfo, formatTA, evaluateBalance } from '@/utils/evaluator';
 
 interface SessionResultsProps {

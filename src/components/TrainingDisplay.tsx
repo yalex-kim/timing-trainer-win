@@ -1,6 +1,6 @@
 import React from 'react';
-import { BodyPart, TrainingRange, TrainingType, CustomBodyPart } from '@/types';
-import { InputType, BeatData, TimingFeedback as TimingFeedbackType } from '@/types/evaluation';
+import type { BodyPart, TrainingRange, TrainingType, CustomBodyPart } from '@/types';
+import type { InputType, BeatData, TimingFeedback as TimingFeedbackType } from '@/types/evaluation';
 import { getBodyPartColors, getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 import { formatTime } from '@/utils/commonHelpers';
 import TimingFeedback from './TimingFeedback';

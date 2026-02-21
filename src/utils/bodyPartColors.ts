@@ -1,4 +1,4 @@
-import { BodyPart } from '@/types';
+import type { BodyPart } from '@/types';
 
 /**
  * Body part color configuration

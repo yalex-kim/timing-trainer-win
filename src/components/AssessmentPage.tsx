@@ -1,148 +1,14 @@
-<<<<<<< HEAD
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrainingType, BodyPart, TrainingRange } from '@/types';
-import { InputEvent, BeatData, TimingFeedback, SessionResults as SessionResultsType, ComprehensiveAssessmentReport as ComprehensiveAssessmentReportType, UserProfile } from '@/types/evaluation';
+import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
 import { useInputHandler } from '@/hooks/useInputHandler';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
-import { TrainingDisplay } from './TrainingDisplay';
-import ComprehensiveAssessmentReport from './ComprehensiveAssessmentReport';
-import { evaluateInput, generateBeatData, aggregateSessionResults } from '@/utils/evaluator';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import ComprehensiveAssessmentReport from '@/components/ComprehensiveAssessmentReport';
 import { generateComprehensiveReport } from '@/utils/assessmentReport';
-
-// 8가지 검사 정의
-interface AssessmentTest {
-  name: string;
-  trainingType: TrainingType;
-  bodyPart: BodyPart;
-  trainingRange: TrainingRange;
-}
-
-const ASSESSMENT_TESTS: AssessmentTest[] = [
-  { name: '왼손 (청각)', trainingType: 'audio', bodyPart: 'hand', trainingRange: 'left' },
-  { name: '왼손 (시각)', trainingType: 'visual', bodyPart: 'hand', trainingRange: 'left' },
-  { name: '오른손 (청각)', trainingType: 'audio', bodyPart: 'hand', trainingRange: 'right' },
-  { name: '오른손 (시각)', trainingType: 'visual', bodyPart: 'hand', trainingRange: 'right' },
-  { name: '왼발 (청각)', trainingType: 'audio', bodyPart: 'foot', trainingRange: 'left' },
-  { name: '왼발 (시각)', trainingType: 'visual', bodyPart: 'foot', trainingRange: 'left' },
-  { name: '오른발 (청각)', trainingType: 'audio', bodyPart: 'foot', trainingRange: 'right' },
-  { name: '오른발 (시각)', trainingType: 'visual', bodyPart: 'foot', trainingRange: 'right' },
-];
-
-const BPM = 60; // 검사 모드는 60 BPM 고정
-const BEATS_PER_TEST = 60; // 각 검사당 60비트 (1분)
-
-export default function AssessmentPage() {
-  const navigate = useNavigate();
-
-  // 사용자 프로필 로드
-  const [userProfile] = useState<UserProfile | null>(() => {
-    const stored = localStorage.getItem('userProfile');
-    return stored ? JSON.parse(stored) : null;
-  });
-
-  // 검사 진행 상태
-  const [currentTestIndex, setCurrentTestIndex] = useState(0);
-  const [allTestsResults, setAllTestsResults] = useState<{
-    testName: string;
-    sessionResults: SessionResultsType;
-  }[]>([]);
-  const [showingReport, setShowingReport] = useState(false);
-  const [comprehensiveReport, setComprehensiveReport] = useState<ComprehensiveAssessmentReportType | null>(null);
-
-  // 현재 검사
-  const currentTest = ASSESSMENT_TESTS[currentTestIndex];
-
-  // 세션 상태
-  const [isActive, setIsActive] = useState(false);
-  const [currentBeat, setCurrentBeat] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(60); // 각 검사는 1분
-  const [currentFeedback, setCurrentFeedback] = useState<TimingFeedback | null>(null);
-  const [currentTestComplete, setCurrentTestComplete] = useState(false);
-
-  // 비트 데이터
-  const [beatsData, setBeatsData] = useState<BeatData[]>([]);
-
-  // 오디오
-  const { playBeep } = useAudioBeep();
-
-  // 비트 데이터 생성
-  useEffect(() => {
-    if (!currentTest) return;
-
-    const beats = generateBeatData({
-      totalBeats: BEATS_PER_TEST,
-      bpm: BPM,
-      bodyPart: currentTest.bodyPart,
-      trainingRange: currentTest.trainingRange,
-      trainingType: currentTest.trainingType,
-    });
-    setBeatsData(beats);
-    setCurrentBeat(0);
-    setTimeRemaining(60);
-    setCurrentTestComplete(false);
-    setIsActive(true);
-  }, [currentTest]);
-
-  // 입력 처리
-  const handleInput = useCallback((inputEvent: InputEvent) => {
-    if (!isActive || currentBeat >= beatsData.length) return;
-
-    const currentBeatData = beatsData[currentBeat];
-    if (!currentBeatData) return;
-
-    const feedback = evaluateInput(inputEvent, currentBeatData, userProfile);
-
-    // 피드백 표시
-    setCurrentFeedback(feedback);
-    setTimeout(() => setCurrentFeedback(null), 1000);
-
-    // 비트 데이터 업데이트
-    currentBeatData.userInput = inputEvent;
-    currentBeatData.timingFeedback = feedback;
-  }, [isActive, currentBeat, beatsData, userProfile]);
-
-  useInputHandler({
-    onInput: handleInput,
-    enableKeyboard: true,
-  });
-
-  // 터치 핸들러
-  const handleLeftTouch = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputEvent: InputEvent = {
-      type: currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot',
-      timestamp: performance.now(),
-      source: 'touch',
-    };
-    handleInput(inputEvent);
-  }, [currentTest, handleInput]);
-
-  const handleRightTouch = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputEvent: InputEvent = {
-      type: currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot',
-      timestamp: performance.now(),
-      source: 'touch',
-    };
-    handleInput(inputEvent);
-  }, [currentTest, handleInput]);
-
-  // 타이머
-  useEffect(() => {
-    if (!isActive) return;
-
-    const interval = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          setIsActive(false);
-          setCurrentTestComplete(true);
-=======
-
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { TrainingType, BodyPart, TrainingRange } from '@/types';
-import {
+import { TrainingDisplay } from '@/components/TrainingDisplay';
+import type { TrainingType, BodyPart, TrainingRange } from '@/types';
+import type {
   BeatData,
   InputEvent,
   InputType,
@@ -150,15 +16,6 @@ import {
   SessionResults as SessionResultsType,
   TimingFeedback as TimingFeedbackType,
 } from '@/types/evaluation';
-import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
-import { createNavigationHandlers } from '@/utils/commonHelpers';
-import { useInputHandler } from '@/hooks/useInputHandler';
-import { useAudioBeep } from '@/hooks/useAudioBeep';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import SessionResults from '@/components/SessionResults';
-import ComprehensiveAssessmentReport from '@/components/ComprehensiveAssessmentReport';
-import { generateComprehensiveReport } from '@/utils/assessmentReport';
-import { TrainingDisplay } from '@/components/TrainingDisplay';
 
 // 검사 순서 정의
 interface AssessmentTest {
@@ -185,14 +42,14 @@ const DURATION_SECONDS = 40;
 
 type AssessmentPhase = 'ready' | 'countdown' | 'testing' | 'waiting' | 'complete';
 
-function AssessmentContent() {
+export default function AssessmentPage() {
   const navigate = useNavigate();
 
   // Custom hooks
-  const { userProfile } = useUserProfile();
+  const { userProfile, isLoading } = useUserProfile();
   const { playBeep } = useAudioBeep();
   
-  // Navigation Handlers 재구현
+  // Navigation Handlers
   const handleExit = () => navigate('/');
   const handleRestart = () => window.location.reload();
 
@@ -221,8 +78,6 @@ function AssessmentContent() {
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
   const currentTestIndexRef = useRef<number>(0);
-  const startTestRef = useRef<(() => void) | null>(null);
-  const finishTestRef = useRef<(() => void) | null>(null);
 
   const currentTest = ASSESSMENT_SEQUENCE[currentTestIndex];
 
@@ -235,18 +90,6 @@ function AssessmentContent() {
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
-
-  // 카운트다운 로직
-  useEffect(() => {
-    if (phase === 'countdown' && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (phase === 'countdown' && countdown === 0) {
-      startTestRef.current?.();
-    }
-  }, [phase, countdown]);
 
   // 검사 시작
   const startTest = useCallback(() => {
@@ -295,10 +138,48 @@ function AssessmentContent() {
     setTimeRemaining(DURATION_SECONDS);
   }, [userProfile, currentTest, totalBeats, intervalMs]);
 
-  // startTest를 ref에 동기화
+  // 카운트다운 로직
   useEffect(() => {
-    startTestRef.current = startTest;
-  }, [startTest]);
+    if (phase === 'countdown' && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (phase === 'countdown' && countdown === 0) {
+      startTest();
+    }
+  }, [phase, countdown, startTest]);
+
+  // 검사 종료
+  const finishTest = useCallback(() => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
+
+    setIsRunning(false);
+
+    const results = TimingEvaluator.evaluateSession(
+      currentSession.beats,
+      currentSession.userProfile.age!,
+      currentSession.settings.trainingType
+    );
+
+    // Store both results and completed session with results attached
+    const completedSession: TrainingSession = {
+      ...currentSession,
+      results,
+    };
+
+    setAllResults((prev) => [...prev, results]);
+    setCompletedSessions((prev) => [...prev, completedSession]);
+    setSession(null);
+
+    // 다음 검사가 있으면 대기 상태, 없으면 완료
+    if (currentTestIndexRef.current < ASSESSMENT_SEQUENCE.length - 1) {
+      setPhase('waiting');
+    } else {
+      setPhase('complete');
+    }
+  }, []);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -422,20 +303,18 @@ function AssessmentContent() {
         }
 
         if (prev + 1 >= totalBeats) {
-          console.log('Reached final beat, calling finishTest in 500ms');
           clearInterval(beatTimer);
           setTimeout(() => {
-            console.log('Calling finishTestRef.current');
-            finishTestRef.current?.();
+            finishTest();
           }, 500);
-          return prev + 1; // 마지막 비트까지 카운트
+          return prev + 1;
         }
         return prev + 1;
       });
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, phase, intervalMs, totalBeats, currentTest, playBeep]);
+  }, [isRunning, phase, intervalMs, totalBeats, currentTest, playBeep, finishTest]);
 
   // 타이머
   useEffect(() => {
@@ -445,159 +324,14 @@ function AssessmentContent() {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
->>>>>>> 0acaefdcf22a76565b148b2d55380980138266b4
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-<<<<<<< HEAD
-    return () => clearInterval(interval);
-  }, [isActive]);
-
-  // 비트 진행
-  useEffect(() => {
-    if (!isActive) return;
-
-    const beatInterval = (60 / BPM) * 1000;
-    const timer = setInterval(() => {
-      setCurrentBeat(prev => {
-        const next = prev + 1;
-
-        if (next >= BEATS_PER_TEST) {
-          setIsActive(false);
-          setCurrentTestComplete(true);
-          return prev;
-        }
-
-        // 청각 모드: 비프음 재생
-        if (currentTest.trainingType === 'audio') {
-          playBeep();
-        }
-
-        return next;
-      });
-    }, beatInterval);
-
-    return () => clearInterval(timer);
-  }, [isActive, currentTest, playBeep]);
-
-  // 현재 검사 완료 처리
-  useEffect(() => {
-    if (!currentTestComplete || beatsData.length === 0) return;
-
-    // 결과 계산
-    const results = aggregateSessionResults(beatsData, userProfile, currentTest.trainingType);
-
-    // 결과 저장
-    setAllTestsResults(prev => [
-      ...prev,
-      {
-        testName: currentTest.name,
-        sessionResults: results,
-      }
-    ]);
-
-    // 다음 검사로 이동 또는 종료
-    setTimeout(() => {
-      if (currentTestIndex < ASSESSMENT_TESTS.length - 1) {
-        setCurrentTestIndex(prev => prev + 1);
-      } else {
-        // 모든 검사 완료: 종합 보고서 생성
-        const report = generateComprehensiveReport(
-          [...allTestsResults, { testName: currentTest.name, sessionResults: results }],
-          userProfile
-        );
-        setComprehensiveReport(report);
-        setShowingReport(true);
-      }
-    }, 2000); // 2초 대기 후 다음 검사
-  }, [currentTestComplete, beatsData, userProfile, currentTest, currentTestIndex, allTestsResults]);
-
-  // 종료 핸들러
-  const handleExit = useCallback(() => {
-    if (window.confirm('검사를 종료하시겠습니까?')) {
-      navigate('/');
-    }
-  }, [navigate]);
-
-  // 종합 보고서 화면
-  if (showingReport && comprehensiveReport) {
-    return (
-      <ComprehensiveAssessmentReport
-        report={comprehensiveReport}
-        onClose={() => navigate('/')}
-      />
-    );
-  }
-
-  // 검사 대기 화면
-  if (currentTestComplete) {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-center">
-          <h2 className="text-4xl font-bold mb-4">{currentTest.name} 완료</h2>
-          <p className="text-xl">
-            {currentTestIndex < ASSESSMENT_TESTS.length - 1
-              ? `다음 검사: ${ASSESSMENT_TESTS[currentTestIndex + 1].name}`
-              : '검사 결과 생성 중...'}
-          </p>
-          <div className="mt-8">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mx-auto"></div>
-=======
     return () => clearInterval(timer);
   }, [isRunning, phase]);
-
-  // 검사 종료
-  const finishTest = useCallback(() => {
-    console.log('finishTest called');
-    const currentSession = sessionRef.current;
-    if (!currentSession) {
-      console.log('No current session, returning');
-      return;
-    }
-
-    console.log('Current test index:', currentTestIndexRef.current);
-    setIsRunning(false);
-
-    const results = TimingEvaluator.evaluateSession(
-      currentSession.beats,
-      currentSession.userProfile.age!,
-      currentSession.settings.trainingType
-    );
-
-    console.log('Results:', results);
-
-    // Store both results and completed session with results attached
-    const completedSession: TrainingSession = {
-      ...currentSession,
-      results,
-    };
-
-    setAllResults((prev) => [...prev, results]);
-    setCompletedSessions((prev) => [...prev, completedSession]);
-    setSession(null);
-
-    // 다음 검사가 있으면 대기 상태, 없으면 완료
-    if (currentTestIndexRef.current < ASSESSMENT_SEQUENCE.length - 1) {
-      console.log('Setting phase to waiting');
-      setPhase('waiting');
-    } else {
-      console.log('Setting phase to complete');
-      setPhase('complete');
-    }
-  }, []);
-
-  // finishTest를 ref에 동기화
-  useEffect(() => {
-    finishTestRef.current = finishTest;
-  }, [finishTest]);
-
-  // Phase 변경 추적
-  useEffect(() => {
-    console.log('Phase changed to:', phase);
-  }, [phase]);
 
   // 다음 검사로 진행
   const handleNextTest = useCallback(() => {
@@ -611,7 +345,7 @@ function AssessmentContent() {
   useEffect(() => {
     if (phase !== 'waiting') return;
 
-    const handleKeyPress = (e: KeyboardEvent) => {
+    const handleKeyPress = () => {
       handleNextTest();
     };
 
@@ -631,7 +365,7 @@ function AssessmentContent() {
   }, [navigate, phase]);
 
   // 로딩 중
-  if (!userProfile) {
+  if (isLoading || !userProfile) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center text-white text-2xl">
         로딩중...
@@ -642,18 +376,18 @@ function AssessmentContent() {
   // 완료 화면 (종합 결과)
   if (phase === 'complete' && completedSessions.length === 8) {
     try {
-      const comprehensiveReport = generateComprehensiveReport(completedSessions);
+      const report = generateComprehensiveReport(completedSessions);
 
       return (
         <ComprehensiveAssessmentReport
-          report={comprehensiveReport}
+          report={report}
           onClose={handleExit}
         />
       );
     } catch (error) {
       console.error('Failed to generate comprehensive report:', error);
 
-      // Fallback to simple results view if report generation fails
+      // Fallback
       const totalTaskAverage = allResults.reduce((sum, r) => sum + r.taskAverage, 0) / allResults.length;
 
       return (
@@ -668,7 +402,6 @@ function AssessmentContent() {
                 <p className="text-red-600">종합 리포트 생성 실패: {(error as Error).message}</p>
               </div>
 
-              {/* 종합 결과 */}
               <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                 <h2 className="text-2xl font-bold text-green-800 mb-4">종합 결과</h2>
                 <div className="text-center">
@@ -679,47 +412,9 @@ function AssessmentContent() {
                 </div>
               </div>
 
-              {/* 개별 검사 결과 */}
-              <div className="space-y-4 mb-8">
-                <h2 className="text-xl font-bold text-gray-800">개별 검사 결과</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {ASSESSMENT_SEQUENCE.map((test, index) => {
-                    const result = allResults[index];
-                    if (!result) return null;
-
-                    return (
-                      <div key={test.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <div className="font-bold text-gray-800 mb-2">{test.name}</div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <div className="text-gray-600">Task Average</div>
-                            <div className="font-bold text-lg">{result.taskAverage.toFixed(1)}ms</div>
-                          </div>
-                          <div>
-                            <div className="text-gray-600">Class</div>
-                            <div className="font-bold text-lg">Class {result.timingClass}</div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 버튼 */}
               <div className="flex gap-4">
-                <button
-                  onClick={handleRestart}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors"
-                >
-                  다시 검사
-                </button>
-                <button
-                  onClick={handleExit}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors"
-                >
-                  홈으로
-                </button>
+                <button onClick={handleRestart} className="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold">다시 검사</button>
+                <button onClick={handleExit} className="flex-1 bg-gray-500 text-white py-3 rounded-lg font-bold">홈으로</button>
               </div>
             </div>
           </div>
@@ -733,79 +428,43 @@ function AssessmentContent() {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
         <div className="bg-white p-12 rounded-lg shadow-2xl max-w-2xl">
-          <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-            타이밍 검사 시작
-          </h1>
+          <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">타이밍 검사 시작</h1>
           <div className="mb-8 space-y-4">
-            <p className="text-lg text-gray-700">
-              총 <span className="font-bold text-green-600">8가지 검사</span>를 순서대로 진행합니다.
-            </p>
+            <p className="text-lg text-gray-700">총 <span className="font-bold text-green-600">8가지 검사</span>를 순서대로 진행합니다.</p>
             <div className="bg-green-50 rounded-lg p-4">
-              <div className="text-sm text-gray-600 mb-2">검사 순서:</div>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">
-                {ASSESSMENT_SEQUENCE.map((test) => (
-                  <li key={test.id}>{test.name}</li>
-                ))}
+                {ASSESSMENT_SEQUENCE.map((test) => <li key={test.id}>{test.name}</li>)}
               </ol>
             </div>
-            <p className="text-gray-600">
-              각 검사는 <span className="font-bold">60 BPM</span>으로 <span className="font-bold">40초</span>간 진행됩니다.
-            </p>
+            <p className="text-gray-600">각 검사는 <span className="font-bold">60 BPM</span>으로 <span className="font-bold">40초</span>간 진행됩니다.</p>
           </div>
           <div className="space-y-3">
             <button
-              onClick={() => {
-                setCountdown(5);
-                setPhase('countdown');
-              }}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-4 px-6 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl"
+              onClick={() => { setCountdown(5); setPhase('countdown'); }}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-lg font-bold text-xl shadow-lg"
             >
               검사 시작
             </button>
-            <button
-              onClick={handleExit}
-              className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-            >
-              홈으로 돌아가기
-            </button>
+            <button onClick={handleExit} className="w-full bg-gray-500 text-white py-3 rounded-lg font-medium">홈으로 돌아가기</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // 대기 화면 (다음 검사로)
+  // 대기 화면
   if (phase === 'waiting') {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
         <div className="bg-white p-12 rounded-lg shadow-2xl max-w-2xl text-center">
           <div className="text-6xl mb-6">✓</div>
-          <h1 className="text-3xl font-bold mb-4 text-gray-800">
-            검사 {currentTestIndex + 1} 완료!
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            다음 검사: <span className="font-bold text-blue-600">{ASSESSMENT_SEQUENCE[currentTestIndex + 1]?.name}</span>
-          </p>
+          <h1 className="text-3xl font-bold mb-4 text-gray-800">검사 {currentTestIndex + 1} 완료!</h1>
+          <p className="text-xl text-gray-600 mb-8">다음 검사: <span className="font-bold text-blue-600">{ASSESSMENT_SEQUENCE[currentTestIndex + 1]?.name}</span></p>
           <div className="space-y-3 mb-4">
-            <button
-              onClick={handleNextTest}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-4 px-8 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl"
-            >
-              다음 검사 시작
-            </button>
-            <button
-              onClick={handleExit}
-              className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-            >
-              검사 중단하고 홈으로
-            </button>
+            <button onClick={handleNextTest} className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-4 rounded-lg font-bold text-xl shadow-lg">다음 검사 시작</button>
+            <button onClick={handleExit} className="w-full bg-gray-500 text-white py-3 rounded-lg font-medium">검사 중단하고 홈으로</button>
           </div>
-          <p className="text-sm text-gray-400">
-            (또는 아무 키나 눌러주세요)
-          </p>
-          <div className="text-gray-400 text-sm mt-4">
-            진행 상황: {currentTestIndex + 1} / {ASSESSMENT_SEQUENCE.length}
-          </div>
+          <p className="text-sm text-gray-400">(또는 아무 키나 눌러주세요)</p>
         </div>
       </div>
     );
@@ -816,23 +475,28 @@ function AssessmentContent() {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-white text-4xl font-bold mb-8">
-            {currentTest.name}
-          </h2>
-          <div className="text-white text-9xl font-bold mb-4 animate-pulse">
-            {countdown}
-          </div>
-          <div className="text-white text-2xl">
-            검사 시작까지...
->>>>>>> 0acaefdcf22a76565b148b2d55380980138266b4
-          </div>
+          <h2 className="text-white text-4xl font-bold mb-8">{currentTest.name}</h2>
+          <div className="text-white text-9xl font-bold mb-4 animate-pulse">{countdown}</div>
+          <div className="text-white text-2xl">검사 시작까지...</div>
         </div>
       </div>
     );
   }
 
   // 검사 진행 화면
-<<<<<<< HEAD
+  const currentBeatData = session?.beats[currentBeat];
+  const nextBeatData = session?.beats[currentBeat + 1];
+
+  const handleLeftTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleTouchInput(currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot');
+  };
+
+  const handleRightTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleTouchInput(currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot');
+  };
+
   return (
     <TrainingDisplay
       trainingType={currentTest.trainingType}
@@ -841,62 +505,16 @@ function AssessmentContent() {
       bpm={BPM}
       timeRemaining={timeRemaining}
       currentBeat={currentBeat}
-      totalBeats={BEATS_PER_TEST}
+      totalBeats={totalBeats}
       isActive={isActive}
-      currentSide={currentTest.trainingRange === 'both' ? 'left' : currentTest.trainingRange}
+      currentSide={currentSide}
       currentFeedback={currentFeedback}
-      currentBeatData={beatsData[currentBeat]}
-      nextBeatData={beatsData[currentBeat + 1]}
+      currentBeatData={currentBeatData}
+      nextBeatData={nextBeatData}
       onLeftTouch={handleLeftTouch}
       onRightTouch={handleRightTouch}
       onExit={handleExit}
-      title={`검사 모드 (${currentTestIndex + 1}/${ASSESSMENT_TESTS.length}) - ${currentTest.name}`}
+      title={`${currentTest.name} (${currentTestIndex + 1}/${ASSESSMENT_SEQUENCE.length})`}
     />
   );
 }
-=======
-  const currentBeatData = session?.beats[currentBeat];
-  const nextBeatData = session?.beats[currentBeat + 1];
-
-  // 터치 핸들러
-  const handleLeftTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputType = currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-    handleTouchInput(inputType as InputType);
-  };
-
-  const handleRightTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputType = currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-    handleTouchInput(inputType as InputType);
-  };
-
-  // 검사 화면 (시각/청각 모두 동일한 컴포넌트 사용)
-  if (phase === 'testing') {
-    return (
-      <TrainingDisplay
-        trainingType={currentTest.trainingType}
-        bodyPart={currentTest.bodyPart}
-        trainingRange={currentTest.trainingRange}
-        bpm={BPM}
-        timeRemaining={timeRemaining}
-        currentBeat={currentBeat}
-        totalBeats={totalBeats}
-        isActive={isActive}
-        currentSide={currentSide}
-        currentFeedback={currentFeedback}
-        currentBeatData={currentBeatData}
-        nextBeatData={nextBeatData}
-        onLeftTouch={handleLeftTouch}
-        onRightTouch={handleRightTouch}
-        onExit={handleExit}
-        title={`${currentTest.name} (${currentTestIndex + 1}/${ASSESSMENT_SEQUENCE.length})`}
-      />
-    );
-  }
-
-  return null;
-}
-
-export default AssessmentContent;
->>>>>>> 0acaefdcf22a76565b148b2d55380980138266b4

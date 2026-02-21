@@ -3,7 +3,8 @@
  * Generates comprehensive timing assessment reports
  */
 
-import {
+import { AGE_BASED_STANDARDS } from '@/types/evaluation';
+import type {
   TrainingSession,
   SessionResults,
   ComprehensiveAssessmentReport,
@@ -14,7 +15,6 @@ import {
   LearningStyle,
   TimingClass,
   AgeGroup,
-  AGE_BASED_STANDARDS,
 } from '@/types/evaluation';
 import { getAgeGroup } from './evaluator';
 

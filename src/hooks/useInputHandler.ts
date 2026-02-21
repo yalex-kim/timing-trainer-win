@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import { InputType, InputEvent } from '@/types/evaluation';
+import type { InputType, InputEvent } from '@/types/evaluation';
 import { InputDeviceMapper } from '@/config/inputMapping';
 
 interface UseInputHandlerProps {

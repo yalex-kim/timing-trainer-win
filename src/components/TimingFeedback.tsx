@@ -5,7 +5,7 @@
 
 'use client';
 
-import { TimingFeedback as TimingFeedbackType } from '@/types/evaluation';
+import type { TimingFeedback as TimingFeedbackType } from '@/types/evaluation';
 
 interface TimingFeedbackProps {
   feedback: TimingFeedbackType | null;
@@ -135,7 +135,7 @@ export function ProgressIndicator({
 // 현재 예상 입력 표시 컴포넌트
 // ============================================================================
 
-import { InputType } from '@/types/evaluation';
+import type { InputType } from '@/types/evaluation';
 import { KEYBOARD_LABELS } from '@/config/inputMapping';
 
 interface ExpectedInputDisplayProps {

@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { ComprehensiveAssessmentReport } from '@/types/evaluation';
+import type { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 import { exportToExcel } from '@/utils/excelExport';

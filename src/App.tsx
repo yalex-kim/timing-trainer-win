@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrainingSettings, DEFAULT_SETTINGS, CustomBodyPart } from '@/types';
-import { UserProfile } from '@/types/evaluation';
+import { DEFAULT_SETTINGS } from '@/types';
+import type { TrainingSettings, CustomBodyPart } from '@/types';
+import type { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
 import { getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 import SerialSettings from '@/components/SerialSettings';

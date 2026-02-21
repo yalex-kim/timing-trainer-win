@@ -1,9 +1,9 @@
-
 import { useNavigate } from 'react-router-dom';
-import { AGE_BASED_STANDARDS, AgeGroup, TimingClass } from '@/types/evaluation';
+import { AGE_BASED_STANDARDS } from '@/types/evaluation';
+import type { AgeGroup, TimingClass } from '@/types/evaluation';
 
 const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
-  'under7': '7세 미만',
+  'under7': '7세 이하',
   '8-9': '8-9세',
   '10-11': '10-11세',
   '12-13': '12-13세',

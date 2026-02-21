@@ -1,15 +1,13 @@
-import { ComprehensiveAssessmentReport } from '@/types/evaluation';
+import type { ComprehensiveAssessmentReport } from '@/types/evaluation';
 
 /**
  * Google Sheets Web App URL
  *
- * 설정 방법:
- * 1. .env.local 파일에 NEXT_PUBLIC_GOOGLE_SHEETS_URL 환경변수 설정
- * 2. 또는 아래 상수를 직접 수정
- *
- * 예: https://script.google.com/macros/s/AKfycby.../exec
+ * 현재는 비활성화되어 있습니다. 나중에 설정 메뉴나 외부 설정 파일을 통해 
+ * 주소를 입력받는 방식으로 구현할 예정입니다.
  */
-const GOOGLE_SHEETS_URL = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_URL || '';
+// const GOOGLE_SHEETS_URL = import.meta.env.VITE_GOOGLE_SHEETS_URL || '';
+const GOOGLE_SHEETS_URL = ''; // 기능 일시 중지
 
 /**
  * ComprehensiveAssessmentReport를 Google Sheets에 저장할 수 있는 형태로 변환
@@ -91,7 +89,7 @@ export async function exportToGoogleSheets(
       'Google Sheets URL이 설정되지 않았습니다.\n\n' +
       '설정 방법:\n' +
       '1. docs/GOOGLE_SHEETS_SETUP.md 파일을 참고하여 Google Sheets Apps Script 설정\n' +
-      '2. .env.local 파일에 NEXT_PUBLIC_GOOGLE_SHEETS_URL 환경변수 추가\n' +
+      '2. .env 파일에 VITE_GOOGLE_SHEETS_URL 환경변수 추가\n' +
       '또는\n' +
       '2. utils/googleSheetsExport.ts의 GOOGLE_SHEETS_URL 상수 수정'
     );

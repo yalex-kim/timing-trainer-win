@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { UserProfile } from '@/types/evaluation';
+import { useNavigate } from 'react-router-dom';
+import type { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
 
 /**
@@ -10,7 +10,7 @@ import { calculateAge } from '@/utils/evaluator';
  * @returns {Object} Object containing the user profile or null
  */
 export function useUserProfile() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,14 +32,14 @@ export function useUserProfile() {
         console.error('Failed to parse user profile:', error);
         setIsLoading(false);
         alert('사용자 정보를 불러오는데 실패했습니다.');
-        router.push('/');
+        navigate('/');
       }
     } else {
       setIsLoading(false);
       alert('사용자 정보를 먼저 입력해주세요.');
-      router.push('/');
+      navigate('/');
     }
-  }, [router]);
+  }, [navigate]);
 
   return { userProfile, isLoading };
 }

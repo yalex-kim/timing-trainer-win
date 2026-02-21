@@ -5,7 +5,7 @@
 
 'use client';
 
-import { InputType } from '@/types/evaluation';
+import type { InputType } from '@/types/evaluation';
 import { KEYBOARD_LABELS } from '@/config/inputMapping';
 
 interface InputGuideProps {

@@ -1,132 +1,14 @@
-<<<<<<< HEAD
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
-import { InputEvent, BeatData, TimingFeedback, SessionResults as SessionResultsType } from '@/types/evaluation';
-import { UserProfile } from '@/types/evaluation';
-import { useInputHandler } from '@/hooks/useInputHandler';
-import { useAudioBeep } from '@/hooks/useAudioBeep';
-import { TrainingDisplay } from './TrainingDisplay';
-import SessionResults from './SessionResults';
-import { evaluateInput, generateBeatData, aggregateSessionResults } from '@/utils/evaluator';
-
-export default function TrainingPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
-  // URL params에서 설정 가져오기
-  const trainingType = (searchParams.get('trainingType') as TrainingType) || 'visual';
-  const bodyPart = (searchParams.get('bodyPart') as BodyPart) || 'hand';
-  const trainingRange = (searchParams.get('trainingRange') as TrainingRange) || 'both';
-  const bpm = parseInt(searchParams.get('bpm') || '60');
-  const durationMinutes = parseInt(searchParams.get('duration') || '1');
-  const customSequence = searchParams.get('customSequence')
-    ? JSON.parse(searchParams.get('customSequence')!) as CustomBodyPart[]
-    : undefined;
-
-  // 사용자 프로필 로드
-  const [userProfile] = useState<UserProfile | null>(() => {
-    const stored = localStorage.getItem('userProfile');
-    return stored ? JSON.parse(stored) : null;
-  });
-
-  // 세션 상태
-  const [isActive, setIsActive] = useState(false);
-  const [currentBeat, setCurrentBeat] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(durationMinutes * 60);
-  const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
-  const [currentFeedback, setCurrentFeedback] = useState<TimingFeedback | null>(null);
-  const [sessionComplete, setSessionComplete] = useState(false);
-  const [sessionResults, setSessionResults] = useState<SessionResultsType | null>(null);
-
-  // 비트 데이터
-  const [beatsData, setBeatsData] = useState<BeatData[]>([]);
-  const totalBeats = Math.floor((durationMinutes * 60 * bpm) / 60);
-
-  // 오디오
-  const { playBeep } = useAudioBeep();
-
-  // 비트 데이터 생성
-  useEffect(() => {
-    const beats = generateBeatData({
-      totalBeats,
-      bpm,
-      bodyPart,
-      trainingRange,
-      trainingType,
-      customSequence,
-    });
-    setBeatsData(beats);
-  }, [totalBeats, bpm, bodyPart, trainingRange, trainingType, customSequence]);
-
-  // 입력 처리
-  const handleInput = useCallback((inputEvent: InputEvent) => {
-    if (!isActive || currentBeat >= beatsData.length) return;
-
-    const currentBeatData = beatsData[currentBeat];
-    if (!currentBeatData) return;
-
-    const feedback = evaluateInput(inputEvent, currentBeatData, userProfile);
-
-    // 피드백 표시 (1초 동안)
-    setCurrentFeedback(feedback);
-    setTimeout(() => setCurrentFeedback(null), 1000);
-
-    // 비트 데이터 업데이트
-    currentBeatData.userInput = inputEvent;
-    currentBeatData.timingFeedback = feedback;
-  }, [isActive, currentBeat, beatsData, userProfile]);
-
-  useInputHandler({
-    onInput: handleInput,
-    enableKeyboard: true,
-  });
-
-  // 터치 핸들러
-  const handleLeftTouch = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputEvent: InputEvent = {
-      type: bodyPart === 'hand' ? 'left-hand' : 'left-foot',
-      timestamp: performance.now(),
-      source: 'touch',
-    };
-    handleInput(inputEvent);
-  }, [bodyPart, handleInput]);
-
-  const handleRightTouch = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputEvent: InputEvent = {
-      type: bodyPart === 'hand' ? 'right-hand' : 'right-foot',
-      timestamp: performance.now(),
-      source: 'touch',
-    };
-    handleInput(inputEvent);
-  }, [bodyPart, handleInput]);
-
-  // 타이머 & 비트 진행
-  useEffect(() => {
-    if (!isActive) return;
-
-    const interval = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          setIsActive(false);
-          setSessionComplete(true);
-=======
-
-import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
-import {
+import type { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
+import type {
   BeatData,
   InputEvent,
   InputType,
   TrainingSession,
-  SessionResults as SessionResultsType,
   TimingFeedback as TimingFeedbackType,
 } from '@/types/evaluation';
 import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
-import { createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -135,13 +17,13 @@ import { TrainingDisplay } from '@/components/TrainingDisplay';
 
 type TrainingPhase = 'countdown' | 'training' | 'results';
 
-function TrainingContent() {
+export default function TrainingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const trainingType = searchParams.get('trainingType') as TrainingType;
-  const bodyPart = searchParams.get('bodyPart') as BodyPart;
-  const trainingRange = searchParams.get('trainingRange') as TrainingRange;
+  const trainingType = (searchParams.get('trainingType') as TrainingType) || 'visual';
+  const bodyPart = (searchParams.get('bodyPart') as BodyPart) || 'hand';
+  const trainingRange = (searchParams.get('trainingRange') as TrainingRange) || 'both';
   const bpm = parseInt(searchParams.get('bpm') || '60');
   const duration = parseInt(searchParams.get('duration') || '1');
 
@@ -158,7 +40,7 @@ function TrainingContent() {
     }
   }, [customSequenceParam]);
 
-  // 훈련 패턴 결정 (커스텀 시퀀스가 있으면 null)
+  // 훈련 패턴 결정
   const pattern = useMemo(() => {
     if (customSequence) return null;
     return PatternGenerator.settingsToPattern(bodyPart, trainingRange);
@@ -170,7 +52,6 @@ function TrainingContent() {
   const [session, setSession] = useState<TrainingSession | null>(null);
   const [currentBeat, setCurrentBeat] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [showResults, setShowResults] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<TimingFeedbackType | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(duration * 60);
 
@@ -179,10 +60,9 @@ function TrainingContent() {
   const [isActive, setIsActive] = useState(false);
 
   // Custom hooks
-  const { userProfile } = useUserProfile();
+  const { userProfile, isLoading } = useUserProfile();
   const { playBeep } = useAudioBeep();
   
-  // React Router용 Navigation Handlers 재구현
   const handleExit = () => navigate('/');
   const handleRestart = () => window.location.reload();
 
@@ -190,24 +70,11 @@ function TrainingContent() {
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
-  const startTrainingRef = useRef<(() => void) | null>(null);
 
   // sessionRef 동기화
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
-
-  // 카운트다운 로직
-  useEffect(() => {
-    if (phase === 'countdown' && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (phase === 'countdown' && countdown === 0) {
-      startTrainingRef.current?.();
-    }
-  }, [phase, countdown]);
 
   // 세션 초기화 및 시작
   const startTraining = useCallback(() => {
@@ -219,18 +86,19 @@ function TrainingContent() {
 
     for (let i = 0; i < totalBeats; i++) {
       let expectedInput;
-
       if (customSequence) {
-        // 커스텀 시퀀스 모드
         const sequenceIndex = i % customSequence.length;
         const part = customSequence[sequenceIndex];
         expectedInput = {
+          beatNumber: i,
           expectedTypes: [part as InputType],
-          description: part,
+          isAlternating: true,
+          alternateIndex: sequenceIndex,
         };
-      } else {
-        // 기존 패턴 모드
+      } else if (pattern) {
         expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      } else {
+        continue;
       }
 
       beats.push({
@@ -258,8 +126,7 @@ function TrainingContent() {
         trainingRange,
         bpm,
         durationMinutes: duration,
-        pattern: customSequence ? customSequence : pattern,
-        customSequence,
+        pattern: (customSequence ? 'all-alternate' : pattern) as any,
       },
       beats,
     };
@@ -269,10 +136,38 @@ function TrainingContent() {
     setPhase('training');
   }, [totalBeats, pattern, customSequence, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
 
-  // startTraining를 ref에 동기화
+  // 카운트다운 로직
   useEffect(() => {
-    startTrainingRef.current = startTraining;
-  }, [startTraining]);
+    if (phase === 'countdown' && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (phase === 'countdown' && countdown === 0) {
+      startTraining();
+    }
+  }, [phase, countdown, startTraining]);
+
+  // 세션 종료
+  const finishSession = useCallback(() => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
+
+    setIsRunning(false);
+
+    const results = TimingEvaluator.evaluateSession(
+      currentSession.beats,
+      currentSession.userProfile.age!,
+      currentSession.settings.trainingType
+    );
+
+    setSession((prev) => {
+      if (!prev) return prev;
+      return { ...prev, results, endTime: Date.now() };
+    });
+
+    setPhase('results');
+  }, []);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -282,21 +177,16 @@ function TrainingContent() {
     setSession((prev) => {
       if (!prev) return prev;
 
-      // 타임스탬프 기준으로 가장 가까운 비트 찾기
       const inputTimestamp = inputEvent.timestamp;
       let closestBeatIndex = -1;
       let minDistance = Infinity;
 
-      // 입력 타임스탬프 기준으로 예상 비트 번호 계산
       const estimatedBeatIndex = Math.round(inputTimestamp / intervalMs);
-
-      // 예상 비트 ±2 범위 내에서 가장 가까운 미입력 비트 찾기
       const searchStart = Math.max(0, estimatedBeatIndex - 2);
       const searchEnd = Math.min(prev.beats.length - 1, estimatedBeatIndex + 2);
 
       for (let i = searchStart; i <= searchEnd; i++) {
         const beat = prev.beats[i];
-        // 이미 입력된 비트는 건너뛰기
         if (beat.actualInput !== null) continue;
 
         const distance = Math.abs(inputTimestamp - beat.expectedTime);
@@ -306,15 +196,10 @@ function TrainingContent() {
         }
       }
 
-      // 가까운 비트를 못 찾았거나, 너무 멀리 떨어져 있으면 무시
-      if (closestBeatIndex === -1 || minDistance > 500) {
-        console.log(`Input ignored: no valid beat found (timestamp: ${inputTimestamp}ms, closest distance: ${minDistance}ms)`);
-        return prev;
-      }
+      if (closestBeatIndex === -1 || minDistance > 500) return prev;
 
       const currentBeatData = prev.beats[closestBeatIndex];
 
-      // 타이밍 평가
       const { feedback, isCorrectInput } = TimingEvaluator.evaluateBeat(
         currentBeatData.expectedTime,
         inputEvent.timestamp,
@@ -322,7 +207,6 @@ function TrainingContent() {
         currentBeatData.expectedInput
       );
 
-      // 비트 데이터 업데이트
       const updatedBeat: BeatData = {
         ...currentBeatData,
         actualInput: inputEvent,
@@ -336,16 +220,13 @@ function TrainingContent() {
       const newBeats = [...prev.beats];
       newBeats[closestBeatIndex] = updatedBeat;
 
-      // 피드백 표시 (다음 입력까지 유지)
       setCurrentFeedback(feedback);
-
-      console.log(`Beat ${closestBeatIndex}: ${feedback.category} (${feedback.displayText})`, updatedBeat);
 
       return { ...prev, beats: newBeats };
     });
   }, [intervalMs]);
 
-  // 입력 핸들러 등록 (키보드)
+  // 입력 핸들러 등록
   useInputHandler({
     onInput: handleInput,
     enableKeyboard: phase === 'training',
@@ -355,10 +236,6 @@ function TrainingContent() {
   const handleTouchInput = useCallback((inputType: InputType) => {
     if (!session || !isRunning) return;
 
-    const currentBeatData = session.beats[currentBeat];
-    if (!currentBeatData) return;
-
-    // 터치 이벤트 생성
     const touchEvent: InputEvent = {
       type: inputType,
       timestamp: performance.now() - startTimeRef.current,
@@ -366,21 +243,18 @@ function TrainingContent() {
       rawData: { inputType },
     };
 
-    // 기존 handleInput 로직 재사용
     handleInput(touchEvent);
-  }, [session, currentBeat, isRunning, handleInput]);
+  }, [session, isRunning, handleInput]);
 
-  // 비트 진행 (시각/청각 효과 + 비트 카운터)
+  // 비트 진행
   useEffect(() => {
     if (!isRunning || phase !== 'training') return;
 
     const beatTimer = setInterval(() => {
-      // 비트 효과
       if (trainingType === 'audio') {
         playBeep();
       }
 
-      // 시각/청각 모두 화면 깜빡임 효과
       setIsActive(true);
       if (trainingRange === 'both') {
         setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
@@ -389,14 +263,11 @@ function TrainingContent() {
         setIsActive(false);
       }, intervalMs * 0.3);
 
-      // 비트 카운터 증가 전에 이전 비트 체크
       setCurrentBeat((prev) => {
-        // 이전 비트가 입력되지 않았다면 miss 피드백 표시
         const currentSession = sessionRef.current;
         if (currentSession && prev > 0) {
           const previousBeat = currentSession.beats[prev - 1];
           if (previousBeat && previousBeat.actualInput === null) {
-            // MISS 피드백 생성
             const missFeedback: TimingFeedbackType = {
               category: 'miss',
               deviation: 999,
@@ -412,7 +283,6 @@ function TrainingContent() {
 
         if (prev + 1 >= totalBeats) {
           clearInterval(beatTimer);
-          // 훈련 종료
           setTimeout(() => finishSession(), 500);
           return prev;
         }
@@ -421,9 +291,9 @@ function TrainingContent() {
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, intervalMs, totalBeats, trainingType, trainingRange, playBeep]);
+  }, [isRunning, phase, intervalMs, totalBeats, trainingType, trainingRange, playBeep, finishSession]);
 
-  // 타이머 (남은 시간)
+  // 타이머
   useEffect(() => {
     if (!isRunning || phase !== 'training') return;
 
@@ -431,83 +301,14 @@ function TrainingContent() {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
->>>>>>> 0acaefdcf22a76565b148b2d55380980138266b4
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-<<<<<<< HEAD
-    return () => clearInterval(interval);
-  }, [isActive]);
-
-  // 비트 진행
-  useEffect(() => {
-    if (!isActive) return;
-
-    const beatInterval = (60 / bpm) * 1000;
-    const timer = setInterval(() => {
-      setCurrentBeat(prev => {
-        const next = prev + 1;
-
-        if (next >= totalBeats) {
-          setIsActive(false);
-          setSessionComplete(true);
-          return prev;
-        }
-
-        // 청각 모드: 비프음 재생
-        if (trainingType === 'audio') {
-          playBeep();
-        }
-
-        // 좌우 교대 (both 모드인 경우)
-        if (trainingRange === 'both' && !customSequence) {
-          setCurrentSide(prev => prev === 'left' ? 'right' : 'left');
-        }
-
-        return next;
-      });
-    }, beatInterval);
-
     return () => clearInterval(timer);
-  }, [isActive, bpm, totalBeats, trainingType, trainingRange, customSequence, playBeep]);
-
-  // 세션 시작
-  useEffect(() => {
-    if (beatsData.length > 0) {
-      setIsActive(true);
-    }
-  }, [beatsData]);
-
-  // 세션 종료 시 결과 계산
-  useEffect(() => {
-    if (sessionComplete && beatsData.length > 0) {
-      const results = aggregateSessionResults(beatsData, userProfile, trainingType);
-      setSessionResults(results);
-    }
-  }, [sessionComplete, beatsData, userProfile, trainingType]);
-
-  // 종료 핸들러
-  const handleExit = useCallback(() => {
-    if (window.confirm('훈련을 종료하시겠습니까?')) {
-      navigate('/');
-    }
-  }, [navigate]);
-
-  const handleRestart = useCallback(() => {
-    window.location.reload();
-  }, []);
-
-  // 결과 화면
-  if (sessionComplete && sessionResults) {
-    return (
-      <SessionResults
-        results={sessionResults}
-=======
-    return () => clearInterval(timer);
-  }, [isRunning]);
+  }, [isRunning, phase]);
 
   // ESC 키로 종료
   useEffect(() => {
@@ -520,57 +321,39 @@ function TrainingContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigate]);
 
-  // 세션 종료
-  const finishSession = useCallback(() => {
-    const currentSession = sessionRef.current;
-    if (!currentSession) return;
+  if (isLoading || !userProfile) {
+    return <div className="fixed inset-0 bg-black flex items-center justify-center text-white text-2xl">로딩중...</div>;
+  }
 
-    setIsRunning(false);
+  if (phase === 'results' && session?.results) {
+    return <SessionResults results={session.results} onRestart={handleRestart} onExit={handleExit} />;
+  }
 
-    // 최신 세션 데이터로 평가 (나이와 모드 기반)
-    const results = TimingEvaluator.evaluateSession(
-      currentSession.beats,
-      currentSession.userProfile.age!,
-      currentSession.settings.trainingType
-    );
-
-    setSession((prev) => {
-      if (!prev) return prev;
-      return { ...prev, results, endTime: Date.now() };
-    });
-
-    setPhase('results');
-
-    console.log('Session finished:', results);
-    console.log('User age:', currentSession.userProfile.age);
-    console.log('Training mode:', currentSession.settings.trainingType);
-    console.log('Total beats:', currentSession.beats.length);
-    console.log('Beats with input:', currentSession.beats.filter(b => b.actualInput !== null).length);
-  }, []);
-
-  // 로딩 중
-  if (!userProfile) {
+  if (phase === 'countdown') {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center text-white text-2xl">
-        로딩중...
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-white text-4xl font-bold mb-8">훈련 시작</h2>
+          <div className="text-white text-9xl font-bold mb-4 animate-pulse">{countdown}</div>
+          <div className="text-white text-2xl">시작까지...</div>
+        </div>
       </div>
     );
   }
 
-  // 결과 화면
-  if (phase === 'results' && session?.results) {
-    return (
-      <SessionResults
-        results={session.results}
->>>>>>> 0acaefdcf22a76565b148b2d55380980138266b4
-        onRestart={handleRestart}
-        onExit={handleExit}
-      />
-    );
-  }
+  const currentBeatData = session?.beats[currentBeat];
+  const nextBeatData = session?.beats[currentBeat + 1];
 
-<<<<<<< HEAD
-  // 훈련 화면
+  const handleLeftTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleTouchInput(bodyPart === 'hand' ? 'left-hand' : 'left-foot');
+  };
+
+  const handleRightTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleTouchInput(bodyPart === 'hand' ? 'right-hand' : 'right-foot');
+  };
+
   return (
     <TrainingDisplay
       trainingType={trainingType}
@@ -583,79 +366,12 @@ function TrainingContent() {
       isActive={isActive}
       currentSide={currentSide}
       currentFeedback={currentFeedback}
-      currentBeatData={beatsData[currentBeat]}
-      nextBeatData={beatsData[currentBeat + 1]}
+      currentBeatData={currentBeatData}
+      nextBeatData={nextBeatData}
       onLeftTouch={handleLeftTouch}
       onRightTouch={handleRightTouch}
       onExit={handleExit}
-      title="훈련 모드"
-      customSequence={customSequence}
+      customSequence={customSequence || undefined}
     />
   );
 }
-=======
-  // 카운트다운 화면
-  if (phase === 'countdown') {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-white text-4xl font-bold mb-8">
-            훈련 시작
-          </h2>
-          <div className="text-white text-9xl font-bold mb-4 animate-pulse">
-            {countdown}
-          </div>
-          <div className="text-white text-2xl">
-            시작까지...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 다음 비트 정보
-  const currentBeatData = session?.beats[currentBeat];
-  const nextBeatData = session?.beats[currentBeat + 1];
-
-  // 터치 핸들러
-  const handleLeftTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-    handleTouchInput(inputType as InputType);
-  };
-
-  const handleRightTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-    handleTouchInput(inputType as InputType);
-  };
-
-  // 훈련 화면 (시각/청각 모두 동일한 컴포넌트 사용)
-  if (phase === 'training') {
-    return (
-      <TrainingDisplay
-        trainingType={trainingType}
-        bodyPart={bodyPart}
-        trainingRange={trainingRange}
-        bpm={bpm}
-        timeRemaining={timeRemaining}
-        currentBeat={currentBeat}
-        totalBeats={totalBeats}
-        isActive={isActive}
-        currentSide={currentSide}
-        currentFeedback={currentFeedback}
-        currentBeatData={currentBeatData}
-        nextBeatData={nextBeatData}
-        onLeftTouch={handleLeftTouch}
-        onRightTouch={handleRightTouch}
-        onExit={handleExit}
-        customSequence={customSequence}
-      />
-    );
-  }
-
-  return null;
-}
-
-export default TrainingContent;
->>>>>>> 0acaefdcf22a76565b148b2d55380980138266b4

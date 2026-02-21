@@ -3,6 +3,7 @@
  * Based on Interactive Metronome (IM) Research
  */
 
+import { CLASS_DEFINITIONS, FEEDBACK_THRESHOLDS, AGE_BASED_STANDARDS } from '@/types/evaluation';
 import type {
   InputType,
   InputEvent,
@@ -16,7 +17,6 @@ import type {
   AgeGroup,
   UserProfile,
 } from '@/types/evaluation';
-import { CLASS_DEFINITIONS, FEEDBACK_THRESHOLDS, AGE_BASED_STANDARDS } from '@/types/evaluation';
 
 // ============================================================================
 // 연령대 및 Class 결정 헬퍼 함수

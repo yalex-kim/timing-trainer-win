@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { ComprehensiveAssessmentReport } from '@/types/evaluation';
+import type { ComprehensiveAssessmentReport } from '@/types/evaluation';
 
 /**
  * 검사 결과를 Excel 파일로 저장하는 함수

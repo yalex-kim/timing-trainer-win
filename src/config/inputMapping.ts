@@ -3,7 +3,7 @@
  * Maps various input devices to InputType
  */
 
-import { InputType } from '@/types/evaluation';
+import type { InputType } from '@/types/evaluation';
 
 // Keyboard key to InputType mapping
 const KEYBOARD_MAPPING: Record<string, InputType> = {
