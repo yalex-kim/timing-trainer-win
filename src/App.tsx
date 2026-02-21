@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SETTINGS } from '@/types';
@@ -7,13 +6,17 @@ import type { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
 import { getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 import SerialSettings from '@/components/SerialSettings';
+import { useAudioBeep } from '@/hooks/useAudioBeep';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { initAudio } = useAudioBeep();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [mode, setMode] = useState<'training' | 'assessment' | null>(null);
   const [settings, setSettings] = useState<TrainingSettings>(DEFAULT_SETTINGS);
+  const [serialStatus, setSerialStatus] = useState({ isConnected: false, portPath: '' });
 
   // 기본 생년월일 계산 (현 시점 기준 6년 전)
   const getDefaultBirthDate = () => {
@@ -44,6 +47,7 @@ export default function Home() {
   // 사용자 정보 저장
   const handleUserFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    initAudio(); // Initialize audio context on first user interaction
     const profile: UserProfile = {
       ...formData,
       age: calculateAge(formData.birthDate),
@@ -101,6 +105,7 @@ export default function Home() {
 
   // 훈련/검사 시작
   const handleStart = () => {
+    initAudio(); // Ensure audio context is ready
     if (!userProfile) {
       alert('사용자 정보를 먼저 입력해주세요.');
       return;
@@ -227,253 +232,223 @@ export default function Home() {
 
   // 훈련 설정 화면
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-        {/* 사용자 정보 표시 */}
-        {userProfile && (
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-sm text-gray-600">훈련자</div>
-                <div className="text-lg font-bold text-gray-800">{userProfile.name}</div>
-                <div className="text-sm text-gray-600">만 {userProfile.age}세</div>
-              </div>
-              <button
-                onClick={handleEditUser}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                수정
-              </button>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Top Status Bar */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-6">
+          <h2 className="text-xl font-bold text-blue-600">Timing Trainer</h2>
+          {userProfile && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="font-medium text-gray-900">{userProfile.name}</span>
+              <span>(만 {userProfile.age}세)</span>
+              <button onClick={handleEditUser} className="text-blue-500 hover:underline ml-1">수정</button>
             </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
+            serialStatus.isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${serialStatus.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+            {serialStatus.isConnected ? `${serialStatus.portPath} 연결됨` : '장치 연결 없음'}
           </div>
-        )}
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            title="설정"
+          >
+            ⚙️
+          </button>
+        </div>
+      </div>
 
-        {/* 시리얼 포트 설정 추가 */}
-        <SerialSettings />
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-xl w-full border border-gray-100">
+          <h1 className="text-3xl font-black text-center mb-8 text-gray-800">
+            어떤 활동을 하시겠습니까?
+          </h1>
 
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-          타이밍 훈련 프로그램
-        </h1>
-
-        <div className="space-y-6">
-          {/* 모드 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              모드 선택
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-8">
+            {/* 모드 선택 */}
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setMode('training')}
-                className={`py-4 px-4 rounded-lg font-bold text-lg transition-colors ${
+                className={`flex flex-col items-center gap-3 py-6 rounded-2xl border-4 transition-all ${
                   mode === 'training'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                 }`}
               >
-                훈련 모드
+                <span className="text-4xl">🎯</span>
+                <span className={`font-bold text-lg ${mode === 'training' ? 'text-blue-700' : 'text-gray-600'}`}>훈련 모드</span>
               </button>
               <button
                 onClick={() => setMode('assessment')}
-                className={`py-4 px-4 rounded-lg font-bold text-lg transition-colors ${
+                className={`flex flex-col items-center gap-3 py-6 rounded-2xl border-4 transition-all ${
                   mode === 'assessment'
-                    ? 'bg-green-600 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                 }`}
               >
-                검사 모드
+                <span className="text-4xl">📋</span>
+                <span className={`font-bold text-lg ${mode === 'assessment' ? 'text-green-700' : 'text-gray-600'}`}>검사 모드</span>
               </button>
             </div>
-          </div>
 
-          {/* 검사 기준표 보기 버튼 */}
-          <div>
-            <button
-              onClick={() => navigate('/standards')}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              <span>📊</span>
-              <span>연령별 검사 기준표 보기</span>
-            </button>
-          </div>
+            {mode === 'training' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                {/* 훈련 타입 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">훈련 감각</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setSettings({ ...settings, trainingType: 'visual' })}
+                      className={`py-3 rounded-lg font-bold transition-all ${
+                        settings.trainingType === 'visual' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      👁️ 시각
+                    </button>
+                    <button
+                      onClick={() => setSettings({ ...settings, trainingType: 'audio' })}
+                      className={`py-3 rounded-lg font-bold transition-all ${
+                        settings.trainingType === 'audio' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      👂 청각
+                    </button>
+                  </div>
+                </div>
 
-          {mode === 'training' && (
-            <>
-          {/* 훈련 타입 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              훈련 타입
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setSettings({ ...settings, trainingType: 'visual' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.trainingType === 'visual'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                시각 훈련
-              </button>
-              <button
-                onClick={() => setSettings({ ...settings, trainingType: 'audio' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.trainingType === 'audio'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                청각 훈련
-              </button>
-            </div>
-          </div>
+                {/* 커스텀 시퀀스 */}
+                <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <label className="text-sm font-bold text-gray-700">훈련 순서 선택 (최대 4개)</label>
+                    {settings.customSequence && (
+                      <button onClick={clearSequence} className="text-xs text-red-500 font-bold">초기화</button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {(['left-hand', 'right-hand', 'left-foot', 'right-foot'] as CustomBodyPart[]).map((part) => {
+                      const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+                      const isSelected = settings.customSequence?.includes(part);
+                      return (
+                        <button
+                          key={part}
+                          onClick={() => addToSequence(part)}
+                          disabled={isSelected}
+                          className={`flex items-center justify-center gap-2 py-3 rounded-lg border-2 transition-all ${
+                            isSelected ? 'bg-gray-200 border-transparent text-gray-400 opacity-50' : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
+                          }`}
+                        >
+                          <span className="text-xl">{getBodyPartIcon(type as 'hand' | 'foot', side)}</span>
+                          <span className="font-bold text-sm">{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-          {/* 커스텀 시퀀스 선택 */}
-          <div className="border-t-2 border-gray-200 pt-4">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                훈련 순서 선택
-              </label>
-              {settings.customSequence && settings.customSequence.length > 0 && (
-                <button
-                  onClick={clearSequence}
-                  className="text-xs text-red-600 hover:text-red-800 font-medium"
-                >
-                  초기화
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              최대 4개까지 선택 가능 (중복 불가)
-            </p>
+                  {settings.customSequence && (
+                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200">
+                      {settings.customSequence.map((part, i) => {
+                        const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+                        return (
+                          <div key={i} className="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border border-blue-200 shadow-sm">
+                            <span className="text-xs font-black text-blue-500">{i+1}</span>
+                            <span className="text-sm font-bold">{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
+                            <button onClick={() => removeFromSequence(i)} className="ml-1 text-red-400 hover:text-red-600 font-bold">✕</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
-            {/* 신체 부위 선택 버튼 */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {(['left-hand', 'right-hand', 'left-foot', 'right-foot'] as CustomBodyPart[]).map((part) => {
-                const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
-                const isSelected = settings.customSequence?.includes(part);
-                const isDisabled = isSelected;
-
-                return (
-                  <button
-                    key={part}
-                    onClick={() => addToSequence(part)}
-                    disabled={isDisabled}
-                    className={`py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                      isDisabled
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    <span>{getBodyPartIcon(type as 'hand' | 'foot', side)}</span>
-                    <span>{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 선택된 시퀀스 표시 */}
-            {settings.customSequence && settings.customSequence.length > 0 && (
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-2 font-medium">선택된 순서:</div>
-                <div className="flex flex-wrap gap-2">
-                  {settings.customSequence.map((part, index) => {
-                    const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
-                    return (
-                      <div key={index} className="flex items-center gap-1">
-                        <div className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-blue-300">
-                          <span className="text-sm">{index + 1}.</span>
-                          <span>{getBodyPartIcon(type as 'hand' | 'foot', side)}</span>
-                          <span className="text-sm font-medium">{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
-                          <button
-                            onClick={() => removeFromSequence(index)}
-                            className="ml-1 text-red-500 hover:text-red-700 font-bold text-sm"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        {index < settings.customSequence!.length - 1 && (
-                          <span className="text-gray-400">→</span>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">BPM (속도): {settings.bpm}</label>
+                    <input
+                      type="range" min="40" max="200" step="5"
+                      value={settings.bpm}
+                      onChange={(e) => setSettings({ ...settings, bpm: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">시간: {settings.durationMinutes}분</label>
+                    <input
+                      type="range" min="1" max="10"
+                      value={settings.durationMinutes}
+                      onChange={(e) => setSettings({ ...settings, durationMinutes: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                  </div>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* BPM 설정 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              BPM: {settings.bpm}
-            </label>
-            <input
-              type="range"
-              min="40"
-              max="200"
-              value={settings.bpm}
-              onChange={(e) => setSettings({ ...settings, bpm: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>40</span>
-              <span>200</span>
+            {mode === 'assessment' && (
+              <div className="bg-green-50 p-6 rounded-2xl border-2 border-green-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <h3 className="font-black text-green-800 mb-3 flex items-center gap-2">
+                  <span>ℹ️</span> 검사 안내
+                </h3>
+                <ul className="space-y-2 text-sm text-green-700 font-medium">
+                  <li className="flex gap-2"><span>•</span> <span>BPM 60으로 고정되어 진행됩니다.</span></li>
+                  <li className="flex gap-2"><span>•</span> <span>총 8가지 신체 부위 및 감각 테스트가 이어집니다.</span></li>
+                  <li className="flex gap-2"><span>•</span> <span>검사 중에는 설정을 변경할 수 없습니다.</span></li>
+                </ul>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={() => navigate('/standards')}
+                className="flex-1 py-4 px-6 rounded-xl border-2 border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-all"
+              >
+                📊 기준표
+              </button>
+              <button
+                onClick={handleStart}
+                disabled={!mode || (mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0))}
+                className={`flex-[2] py-4 px-6 rounded-xl font-black text-xl shadow-lg transition-all transform active:scale-95 ${
+                  !mode || (mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0))
+                    ? 'bg-gray-300 text-white cursor-not-allowed'
+                    : mode === 'training'
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {mode === 'training' ? '훈련 시작하기' : mode === 'assessment' ? '검사 시작하기' : '활동 선택'}
+              </button>
             </div>
           </div>
-
-          {/* 훈련 시간 설정 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              훈련 시간: {settings.durationMinutes}분
-            </label>
-            <input
-              type="range"
-              min="1"
-              max="5"
-              value={settings.durationMinutes}
-              onChange={(e) => setSettings({ ...settings, durationMinutes: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>1분</span>
-              <span>5분</span>
-            </div>
-          </div>
-
-            </>
-          )}
-
-          {/* 검사 모드 안내 */}
-          {mode === 'assessment' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="font-bold text-green-800 mb-2">검사 모드</h3>
-              <ul className="text-sm text-green-700 space-y-1">
-                <li>• BPM: 60 (고정)</li>
-                <li>• 8가지 검사를 순서대로 진행합니다</li>
-                <li>• 왼손(청각) → 왼손(시각) → 오른손(청각) → 오른손(시각)</li>
-                <li>• 왼발(청각) → 왼발(시각) → 오른발(청각) → 오른발(시각)</li>
-              </ul>
-            </div>
-          )}
-
-          {/* 시작 버튼 */}
-          {mode && (
-            <button
-              onClick={handleStart}
-              disabled={mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0)}
-              className={`w-full text-white py-4 px-6 rounded-lg font-bold text-lg transition-all shadow-lg ${
-                mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0)
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : mode === 'training'
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 hover:shadow-xl'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 hover:shadow-xl'
-              }`}
-            >
-              {mode === 'training' ? '훈련 시작' : '검사 시작'}
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-2xl font-black text-gray-800">설정</h2>
+              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-100 rounded-full">✕</button>
+            </div>
+            <div className="p-6">
+              <SerialSettings onStatusChange={(isConnected, path) => setSerialStatus({ isConnected, portPath: path })} />
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100">
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="w-full py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 transition-all"
+              >
+                완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

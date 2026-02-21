@@ -1,55 +1,127 @@
-// SerialSettings.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-const SerialSettings = () => {
+interface SerialSettingsProps {
+  onStatusChange?: (isConnected: boolean, portPath: string) => void;
+}
+
+const SerialSettings = ({ onStatusChange }: SerialSettingsProps) => {
   const [ports, setPorts] = useState<any[]>([]);
   const [selectedPort, setSelectedPort] = useState('');
   const [baudRate, setBaudRate] = useState(115200);
   const [isConnected, setIsConnected] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
-  useEffect(() => {
-    // List ports on mount
-    const fetchPorts = async () => {
+  const fetchPorts = useCallback(async () => {
+    setIsScanning(true);
+    try {
       const portList = await window.electronAPI.listPorts();
       setPorts(portList);
-      if (portList.length > 0) setSelectedPort(portList[0].path);
-    };
+      if (portList.length > 0 && !selectedPort) {
+        setSelectedPort(portList[0].path);
+      }
+    } catch (err) {
+      console.error('Failed to list ports:', err);
+    } finally {
+      setIsScanning(false);
+    }
+  }, [selectedPort]);
+
+  useEffect(() => {
     fetchPorts();
-  }, []);
+  }, [fetchPorts]);
 
   const handleConnect = async () => {
     try {
       await window.electronAPI.connect(selectedPort, baudRate);
       setIsConnected(true);
-      alert('Connected to ' + selectedPort);
+      onStatusChange?.(true, selectedPort);
     } catch (err: any) {
-      alert('Failed to connect: ' + err.message);
+      alert('연결 실패: ' + err);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await window.electronAPI.disconnect();
+      setIsConnected(false);
+      onStatusChange?.(false, '');
+    } catch (err: any) {
+      console.error('Disconnect failed:', err);
     }
   };
 
   return (
-    <div className="p-4 bg-gray-100 rounded border border-gray-300 mb-4">
-      <h3 className="font-bold mb-2">Serial Port Settings</h3>
-      <div className="flex gap-2">
-        <select
-          value={selectedPort}
-          onChange={(e) => setSelectedPort(e.target.value)}
-          className="border p-2 rounded"
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-gray-800">시리얼 포트 설정</h3>
+        <button 
+          onClick={fetchPorts}
+          disabled={isScanning || isConnected}
+          className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
         >
-          {ports.map((port) => (
-            <option key={port.path} value={port.path}>
-              {port.path} ({port.manufacturer || 'Unknown'})
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleConnect}
-          disabled={isConnected}
-          className={`px-4 py-2 rounded text-white ${isConnected ? 'bg-green-500' : 'bg-blue-500 hover:bg-blue-600'}`}
-        >
-          {isConnected ? 'Connected' : 'Connect'}
+          {isScanning ? '검색 중...' : '장치 새로고침'}
         </button>
       </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            포트 선택
+          </label>
+          <select
+            value={selectedPort}
+            onChange={(e) => setSelectedPort(e.target.value)}
+            disabled={isConnected}
+            className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            {ports.length === 0 && <option value="">검색된 포트 없음</option>}
+            {ports.map((port) => (
+              <option key={port.path} value={port.path}>
+                {port.path} {port.manufacturer ? `(${port.manufacturer})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Baud Rate
+          </label>
+          <select
+            value={baudRate}
+            onChange={(e) => setBaudRate(Number(e.target.value))}
+            disabled={isConnected}
+            className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value={9600}>9600</option>
+            <option value={19200}>19200</option>
+            <option value={38400}>38400</option>
+            <option value={57600}>57600</option>
+            <option value={115200}>115200</option>
+          </select>
+        </div>
+
+        <button
+          onClick={isConnected ? handleDisconnect : handleConnect}
+          disabled={!selectedPort && !isConnected}
+          className={`w-full py-3 rounded-lg text-white font-bold transition-all shadow-md ${
+            isConnected 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {isConnected ? '연결 해제' : '장치 연결하기'}
+        </button>
+      </div>
+
+      {isConnected && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-sm text-green-700 font-medium">
+            {selectedPort} 포트에 연결됨
+          </span>
+        </div>
+      )}
     </div>
   );
 };
