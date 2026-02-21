@@ -3,6 +3,7 @@ import type { BodyPart, TrainingRange, TrainingType, CustomBodyPart } from '@/ty
 import type { InputType, BeatData, TimingFeedback as TimingFeedbackType } from '@/types/evaluation';
 import { getBodyPartColors, getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 import { formatTime } from '@/utils/commonHelpers';
+import { KEYBOARD_LABELS } from '@/config/inputMapping';
 import TimingFeedback from './TimingFeedback';
 
 interface TrainingDisplayProps {
@@ -136,6 +137,11 @@ export function TrainingDisplay({
         <div className={`text-white text-center pointer-events-none transition-transform duration-200 ${iconScale} ${iconBrightness}`}>
           <div className="text-7xl mb-2">{getBodyPartIcon(type as BodyPart, side)}</div>
           <div className="text-2xl font-bold">{getBodyPartLabel(type as BodyPart, side)}</div>
+          {enabled && (
+            <div className="mt-2 bg-black/30 px-3 py-1 rounded text-xl font-mono font-black">
+              {KEYBOARD_LABELS[part as InputType]}
+            </div>
+          )}
         </div>
       </div>
     );

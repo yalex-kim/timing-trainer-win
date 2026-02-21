@@ -248,17 +248,21 @@ export class TimingEvaluator {
     // 방향 결정
     const direction = absDeviation <= 5 ? 'on-time' : deviation < 0 ? 'early' : 'late';
 
-    // 잘못된 입력이면 페널티
-    const finalPoints = isCorrectInput ? threshold.points : threshold.points * 0.5;
+    // 잘못된 입력이면 페널티 및 색상 변경
+    const finalPoints = isCorrectInput ? threshold.points : 0;
+    const finalColor = isCorrectInput ? threshold.color : '#ef4444'; // Wrong is always red
+    const finalMessage = isCorrectInput ? threshold.message : 'WRONG INPUT';
 
     const feedback: TimingFeedback = {
-      category,
+      category: isCorrectInput ? category : 'miss' as FeedbackCategory,
       deviation,
       direction,
       points: finalPoints,
-      color: threshold.color,
-      message: isCorrectInput ? threshold.message : `WRONG INPUT - ${threshold.message}`,
-      displayText: `${deviation > 0 ? '+' : ''}${deviation.toFixed(0)}ms`,
+      color: finalColor,
+      message: finalMessage,
+      displayText: isCorrectInput 
+        ? `${deviation > 0 ? '+' : ''}${deviation.toFixed(0)}ms`
+        : `WRONG (${deviation > 0 ? '+' : ''}${deviation.toFixed(0)}ms)`,
     };
 
     return {
