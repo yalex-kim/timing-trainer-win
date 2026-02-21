@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "main": "dist-electron/main.js",
-  "author": "Your Name",
-  "description": "타이밍 훈련 프로그램",
+  "author": "yalex-kim",
+  "description": "Professional Timing Trainer & Assessment System",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && electron-builder",
@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.timing-trainer.app",
-    "productName": "타이밍 훈련 프로그램",
+    "productName": "Timing Trainer",
     "directories": {
       "output": "release"
     },
