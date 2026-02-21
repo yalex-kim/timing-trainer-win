@@ -1,20 +1,82 @@
 {
   "name": "timing-trainer-win",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "main": "dist-electron/main.js",
+  "author": "Your Name",
+  "description": "타이밍 훈련 프로그램",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && electron-builder",
+    "build:dir": "tsc -b && vite build && electron-builder --dir",
+    "build:win": "tsc -b && vite build && electron-builder --win --x64",
     "lint": "eslint .",
     "preview": "vite preview",
     "postinstall": "electron-builder install-app-deps"
   },
+  "build": {
+    "appId": "com.timing-trainer.app",
+    "productName": "타이밍 훈련 프로그램",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "타이밍 훈련"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
+    },
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.0",
+    "claude": "^0.1.1",
+    "exceljs": "^4.4.0",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
-    "serialport": "^13.0.0"
+    "recharts": "^3.7.0",
+    "serialport": "^13.0.0",
+    "tailwindcss": "^4.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

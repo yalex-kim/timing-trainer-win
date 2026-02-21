@@ -17,8 +17,12 @@ function createWindow() {
     },
   });
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+  // 개발 모드: VITE_DEV_SERVER_URL 환경변수 또는 app.isPackaged로 판단
+  const isDev = !app.isPackaged;
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
+
+  if (isDev) {
+    mainWindow.loadURL(devServerUrl);
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));

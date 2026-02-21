@@ -3,7 +3,7 @@
  * Based on Interactive Metronome (IM) Research
  */
 
-import {
+import type {
   InputType,
   InputEvent,
   TrainingPattern,
@@ -13,12 +13,10 @@ import {
   FeedbackCategory,
   SessionResults,
   TimingClass,
-  CLASS_DEFINITIONS,
-  FEEDBACK_THRESHOLDS,
-  AGE_BASED_STANDARDS,
   AgeGroup,
   UserProfile,
 } from '@/types/evaluation';
+import { CLASS_DEFINITIONS, FEEDBACK_THRESHOLDS, AGE_BASED_STANDARDS } from '@/types/evaluation';
 
 // ============================================================================
 // 연령대 및 Class 결정 헬퍼 함수
@@ -43,7 +41,7 @@ export function calculateAge(birthDate: string): number {
 /**
  * 나이를 연령대 그룹으로 변환
  */
-export function getAgeGroup(age: number): AgeGroup {
+function getAgeGroup(age: number): AgeGroup {
   if (age <= 7) return 'under7';
   if (age <= 9) return '8-9';
   if (age <= 11) return '10-11';
@@ -61,11 +59,11 @@ export function determineClassByAge(
   mode: 'visual' | 'auditory'
 ): TimingClass {
   const ageGroup = getAgeGroup(age);
-  const standards = AGE_BASED_STANDARDS[mode][ageGroup];
+  const standards = AGE_BASED_STANDARDS[mode as 'visual' | 'auditory'][ageGroup];
 
   for (const standard of standards) {
     if (taskAverage >= standard.range[0] && taskAverage < standard.range[1]) {
-      return standard.class;
+      return standard.class as unknown as TimingClass;
     }
   }
 
@@ -242,10 +240,10 @@ export class TimingEvaluator {
     } else if (absDeviation <= FEEDBACK_THRESHOLDS.poor.range) {
       category = 'poor';
     } else {
-      category = 'miss';
+      category = 'miss' as FeedbackCategory;
     }
 
-    threshold = FEEDBACK_THRESHOLDS[category];
+    threshold = FEEDBACK_THRESHOLDS[category as FeedbackCategory];
 
     // 방향 결정
     const direction = absDeviation <= 5 ? 'on-time' : deviation < 0 ? 'early' : 'late';
@@ -275,7 +273,7 @@ export class TimingEvaluator {
   static determineClass(ta: number): TimingClass {
     for (const def of CLASS_DEFINITIONS) {
       if (ta >= def.taRange[0] && ta < def.taRange[1]) {
-        return def.class;
+        return def.class as unknown as TimingClass;
       }
     }
     return 1; // 기본값 (최하위)
@@ -419,7 +417,7 @@ export class TimingEvaluator {
           100
         : 0;
 
-    const classImprovement = currentResults.classLevel - previousResults.classLevel;
+    const classImprovement = Number(currentResults.classLevel) - Number(previousResults.classLevel);
 
     return {
       taImprovement,
@@ -508,7 +506,7 @@ export class InputMapper {
  * Class 정보 가져오기
  */
 export function getClassInfo(classLevel: TimingClass) {
-  return CLASS_DEFINITIONS.find((def) => def.class === classLevel);
+  return CLASS_DEFINITIONS.find((def: { class: string }) => def.class === String(classLevel));
 }
 
 /**
@@ -534,4 +532,111 @@ export function evaluateBalance(earlyPercent: number, latePercent: number): stri
   return earlyPercent > latePercent
     ? '조기 편향 (Early-Biased)'
     : '지연 편향 (Late-Biased)';
+}
+
+// ============================================================================
+// Helper Functions for Components
+// ============================================================================
+
+/**
+ * 단일 입력 평가 (컴포넌트용 헬퍼 함수)
+ */
+export function evaluateInput(
+  inputEvent: InputEvent,
+  beatData: BeatData,
+  userProfile: UserProfile | null
+): TimingFeedback {
+  const result = TimingEvaluator.evaluateBeat(
+    beatData.expectedTime,
+    inputEvent.timestamp,
+    inputEvent.type,
+    beatData.expectedInput
+  );
+
+  // BeatData 업데이트
+  beatData.actualInput = inputEvent;
+  beatData.actualTime = inputEvent.timestamp;
+  beatData.deviation = inputEvent.timestamp - beatData.expectedTime;
+  beatData.feedback = result.feedback;
+  beatData.isCorrectInput = result.isCorrectInput;
+  beatData.isWrongInput = !result.isCorrectInput;
+
+  return result.feedback;
+}
+
+/**
+ * 훈련 비트 데이터 생성 (컴포넌트용 헬퍼 함수)
+ */
+export function generateBeatData(params: {
+  totalBeats: number;
+  bpm: number;
+  bodyPart: 'hand' | 'foot';
+  trainingRange: 'left' | 'right' | 'both';
+  trainingType: 'visual' | 'audio';
+  customSequence?: ('left-hand' | 'right-hand' | 'left-foot' | 'right-foot')[];
+}): BeatData[] {
+  const { totalBeats, bpm, bodyPart, trainingRange, customSequence } = params;
+  const beatInterval = (60 / bpm) * 1000; // ms
+  const beats: BeatData[] = [];
+
+  // 패턴 결정
+  let pattern: TrainingPattern;
+  if (customSequence && customSequence.length > 0) {
+    // 커스텀 시퀀스 모드
+    pattern = 'all-alternate'; // 임시로 all-alternate 사용
+  } else if (bodyPart === 'hand') {
+    if (trainingRange === 'left') pattern = 'left-hand-only';
+    else if (trainingRange === 'right') pattern = 'right-hand-only';
+    else pattern = 'both-hands-alternate';
+  } else {
+    // foot
+    if (trainingRange === 'left') pattern = 'left-foot-only';
+    else if (trainingRange === 'right') pattern = 'right-foot-only';
+    else pattern = 'both-feet-alternate';
+  }
+
+  for (let i = 0; i < totalBeats; i++) {
+    let expectedInput: ExpectedInput;
+
+    if (customSequence && customSequence.length > 0) {
+      // 커스텀 시퀀스 사용
+      const sequenceIndex = i % customSequence.length;
+      expectedInput = {
+        beatNumber: i,
+        expectedTypes: [customSequence[sequenceIndex]],
+        isAlternating: true,
+        alternateIndex: sequenceIndex,
+      };
+    } else {
+      // 기본 패턴 사용
+      expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+    }
+
+    beats.push({
+      beatNumber: i,
+      expectedTime: i * beatInterval,
+      expectedInput,
+      actualInput: null,
+      actualTime: null,
+      deviation: null,
+      feedback: null,
+      isCorrectInput: false,
+      isWrongInput: false,
+      totalInputs: 0,
+    });
+  }
+
+  return beats;
+}
+
+/**
+ * 세션 결과 집계 (컴포넌트용 헬퍼 함수)
+ */
+export function aggregateSessionResults(
+  beatsData: BeatData[],
+  userProfile: UserProfile | null,
+  trainingMode: 'visual' | 'audio' = 'visual'
+): SessionResults {
+  const age = userProfile?.age || 18; // 기본값
+  return TimingEvaluator.evaluateSession(beatsData, age, trainingMode);
 }
