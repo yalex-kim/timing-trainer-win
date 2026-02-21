@@ -15,14 +15,25 @@ export function useAudioBeep() {
     if (typeof window === 'undefined') return;
 
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
+        latencyHint: 'interactive',
+      });
     }
 
     return () => {
-      if (audioContextRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
     };
+  }, []);
+
+  /**
+   * Resume AudioContext if it's suspended (required by modern browsers)
+   */
+  const initAudio = useCallback(async () => {
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume();
+    }
   }, []);
 
   /**
@@ -32,6 +43,12 @@ export function useAudioBeep() {
     if (!audioContextRef.current) return;
 
     const audioContext = audioContextRef.current;
+    
+    // Resume context if needed
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -41,12 +58,16 @@ export function useAudioBeep() {
     oscillator.frequency.value = 1200;
     oscillator.type = 'sine';
 
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    const startTime = audioContext.currentTime;
+    const duration = 0.1;
 
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.005); // Rapid fade-in to reduce clicking
+    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
   }, []);
 
-  return { playBeep };
+  return { playBeep, initAudio };
 }
