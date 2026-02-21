@@ -61,7 +61,7 @@ export default function TrainingPage() {
 
   // Custom hooks
   const { userProfile, isLoading } = useUserProfile();
-  const { playBeep } = useAudioBeep();
+  const { playBeep, initAudio } = useAudioBeep();
   
   const handleExit = () => navigate('/');
   const handleRestart = () => window.location.reload();
@@ -81,6 +81,7 @@ export default function TrainingPage() {
     if (!userProfile) return;
     if (!customSequence && !pattern) return;
 
+    initAudio(); // Initialize audio context on user action
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
 

@@ -1,52 +1,58 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+// Singleton instance to prevent multiple contexts and accidental closing
+let globalAudioContext: AudioContext | null = null;
+
 /**
  * Audio Beep Hook
  * Provides a reusable beep sound functionality for training sessions
- *
- * @returns {Object} Object containing the playBeep function
  */
 export function useAudioBeep() {
-  const audioContextRef = useRef<AudioContext | null>(null);
+  // Function to get or create the context
+  const getAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
 
-  // Initialize AudioContext
-  useEffect(() => {
-    // Ensure we're on the client side
-    if (typeof window === 'undefined') return;
-
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
+    if (!globalAudioContext || globalAudioContext.state === 'closed') {
+      globalAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
         latencyHint: 'interactive',
       });
+      console.log('New AudioContext created, state:', globalAudioContext.state);
     }
-
-    return () => {
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-      }
-    };
+    return globalAudioContext;
   }, []);
+
+  // Initialize on mount
+  useEffect(() => {
+    getAudioContext();
+    // We do NOT close the context here anymore to keep it alive for the whole session
+  }, [getAudioContext]);
 
   /**
-   * Resume AudioContext if it's suspended (required by modern browsers)
+   * Resume AudioContext if it's suspended
    */
   const initAudio = useCallback(async () => {
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      await audioContextRef.current.resume();
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      await ctx.resume();
+      console.log('AudioContext resumed via initAudio, state:', ctx.state);
     }
-  }, []);
+  }, [getAudioContext]);
 
   /**
    * Play a beep sound at 1200Hz
    */
   const playBeep = useCallback(() => {
-    if (!audioContextRef.current) return;
-
-    const audioContext = audioContextRef.current;
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
     
-    // Resume context if needed
+    // Resume context if suspended
     if (audioContext.state === 'suspended') {
-      audioContext.resume();
+      audioContext.resume().catch(console.error);
+    }
+
+    if (audioContext.state === 'closed') {
+      console.warn('AudioContext is closed, sound will not play');
+      return;
     }
 
     const oscillator = audioContext.createOscillator();
@@ -59,15 +65,15 @@ export function useAudioBeep() {
     oscillator.type = 'sine';
 
     const startTime = audioContext.currentTime;
-    const duration = 0.1;
+    const duration = 0.15;
 
     gainNode.gain.setValueAtTime(0, startTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.005); // Rapid fade-in to reduce clicking
-    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+    gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.01);
+    gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
 
     oscillator.start(startTime);
     oscillator.stop(startTime + duration);
-  }, []);
+  }, [getAudioContext]);
 
   return { playBeep, initAudio };
 }

@@ -47,7 +47,7 @@ export default function AssessmentPage() {
 
   // Custom hooks
   const { userProfile, isLoading } = useUserProfile();
-  const { playBeep } = useAudioBeep();
+  const { playBeep, initAudio } = useAudioBeep();
   
   // Navigation Handlers
   const handleExit = () => navigate('/');
@@ -95,6 +95,7 @@ export default function AssessmentPage() {
   const startTest = useCallback(() => {
     if (!userProfile || !currentTest) return;
 
+    initAudio(); // Initialize audio context on user action
     const pattern = PatternGenerator.settingsToPattern(currentTest.bodyPart, currentTest.trainingRange);
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
