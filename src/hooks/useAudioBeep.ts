@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 // Singleton instance to prevent multiple contexts and accidental closing
 let globalAudioContext: AudioContext | null = null;

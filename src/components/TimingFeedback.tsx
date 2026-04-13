@@ -17,10 +17,10 @@ interface TimingFeedbackProps {
 
 export default function TimingFeedback({
   feedback,
-  streak = 0,
-  currentPoints,
-  averagePoints,
-  showStreak = true,
+  streak: _streak = 0,
+  currentPoints: _currentPoints,
+  averagePoints: _averagePoints,
+  showStreak: _showStreak = true,
 }: TimingFeedbackProps) {
   if (!feedback) return null;
 

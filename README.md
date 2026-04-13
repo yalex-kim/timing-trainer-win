@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# 타이밍 트레이너 (Timing Trainer)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interactive Metronome(IM) 연구를 기반으로 한 타이밍 훈련 및 과제수행능력 평가 시스템입니다.  
+좌/우 손, 좌/우 발 네 가지 신체 부위의 타이밍 협응력을 훈련하고 임상 수준의 평가 보고서를 생성합니다.
 
-Currently, two official plugins are available:
+## 기술 스택
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **프레임워크**: Electron 40 + React 19 + TypeScript 5
+- **빌드 도구**: Vite 7 + electron-builder
+- **스타일링**: Tailwind CSS 4
+- **시리얼 통신**: serialport 13 (USB 입력 장치)
+- **오디오**: Web Audio API
+- **차트**: Recharts 3
+- **내보내기**: ExcelJS 4 (XLSX), jsPDF 4 + html-to-image (PDF)
 
-## React Compiler
+## 시작하기
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# 의존성 설치
+npm install
 
-## Expanding the ESLint configuration
+# 개발 서버 실행 (Vite + Electron 핫 리로드)
+npm run dev
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# 린트 검사
+npm run lint
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Windows 빌드 (NSIS 설치 파일 + 포터블 EXE)
+npm run build:win
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 패키징 없이 빌드 (빠른 확인용)
+npm run build:dir
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 주요 기능
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 훈련 모드
+- 1–4개 신체 부위 선택, 시각 또는 청각 자극, BPM 40–200 설정
+- 1–10분 훈련 세션
+- 실시간 피드백: PERFECT → EXCELLENT → GOOD → FAIR → POOR → MISS
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 평가 모드
+- BPM 60 고정, 4 신체 부위 × 2 자극 유형(시각/청각) = 8개 표준화 테스트
+- 연령별 기준표 기반 등급(1–7) 산출
+- 학습 유형(시각/청각 우세), 좌우뇌 균형, 지속성 분석 포함 통합 보고서
+
+### 결과 내보내기
+- Excel(XLSX) 및 PDF 형식 지원
+
+## 입력 장치
+
+| 키 | 신체 부위 |
+|----|----------|
+| A | 왼손 |
+| S | 오른손 |
+| D | 왼발 |
+| F | 오른발 |
+
+USB 시리얼 장치도 지원합니다 (앱 설정에서 포트 연결).
+
+## 데이터 저장
+
+모든 사용자 프로필 및 세션 기록은 **localStorage**에 저장됩니다. 별도의 서버나 인증이 필요하지 않습니다.

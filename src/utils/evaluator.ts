@@ -63,7 +63,7 @@ export function determineClassByAge(
 
   for (const standard of standards) {
     if (taskAverage >= standard.range[0] && taskAverage < standard.range[1]) {
-      return standard.class as unknown as TimingClass;
+      return standard.class;
     }
   }
 
@@ -240,10 +240,10 @@ export class TimingEvaluator {
     } else if (absDeviation <= FEEDBACK_THRESHOLDS.poor.range) {
       category = 'poor';
     } else {
-      category = 'miss' as FeedbackCategory;
+      category = 'miss';
     }
 
-    threshold = FEEDBACK_THRESHOLDS[category as FeedbackCategory];
+    threshold = FEEDBACK_THRESHOLDS[category];
 
     // 방향 결정
     const direction = absDeviation <= 5 ? 'on-time' : deviation < 0 ? 'early' : 'late';
@@ -254,7 +254,7 @@ export class TimingEvaluator {
     const finalMessage = isCorrectInput ? threshold.message : 'WRONG INPUT';
 
     const feedback: TimingFeedback = {
-      category: isCorrectInput ? category : 'miss' as FeedbackCategory,
+      category: isCorrectInput ? category : 'miss',
       deviation,
       direction,
       points: finalPoints,
@@ -277,7 +277,7 @@ export class TimingEvaluator {
   static determineClass(ta: number): TimingClass {
     for (const def of CLASS_DEFINITIONS) {
       if (ta >= def.taRange[0] && ta < def.taRange[1]) {
-        return def.class as unknown as TimingClass;
+        return def.class;
       }
     }
     return 1; // 기본값 (최하위)
@@ -510,7 +510,7 @@ export class InputMapper {
  * Class 정보 가져오기
  */
 export function getClassInfo(classLevel: TimingClass) {
-  return CLASS_DEFINITIONS.find((def: { class: string }) => def.class === String(classLevel));
+  return CLASS_DEFINITIONS.find((def) => def.class === classLevel);
 }
 
 /**
@@ -548,7 +548,7 @@ export function evaluateBalance(earlyPercent: number, latePercent: number): stri
 export function evaluateInput(
   inputEvent: InputEvent,
   beatData: BeatData,
-  userProfile: UserProfile | null
+  _userProfile: UserProfile | null
 ): TimingFeedback {
   const result = TimingEvaluator.evaluateBeat(
     beatData.expectedTime,
@@ -626,7 +626,6 @@ export function generateBeatData(params: {
       feedback: null,
       isCorrectInput: false,
       isWrongInput: false,
-      totalInputs: 0,
     });
   }
 

@@ -6,7 +6,6 @@
 import { AGE_BASED_STANDARDS } from '@/types/evaluation';
 import type {
   TrainingSession,
-  SessionResults,
   ComprehensiveAssessmentReport,
   ProcessingCapability,
   AttentionMetrics,
@@ -14,7 +13,6 @@ import type {
   HemisphereBalance,
   LearningStyle,
   TimingClass,
-  AgeGroup,
 } from '@/types/evaluation';
 import { getAgeGroup } from './evaluator';
 
@@ -353,6 +351,7 @@ export function generateComprehensiveReport(
   const auditoryCapability = calculateProcessingCapability(
     auditoryTaskAverage,
     auditoryClass,
+    age,
     'auditory'
   );
 

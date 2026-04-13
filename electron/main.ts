@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { SerialPort } from 'serialport';
-import { ReadlineParser } from '@serialport/parser-readline';
 
 let mainWindow: BrowserWindow | null = null;
 let currentPort: SerialPort | null = null;
@@ -63,11 +62,14 @@ ipcMain.handle('serial:connect', async (_, path: string, baudRate: number) => {
   return new Promise((resolve, reject) => {
     currentPort = new SerialPort({ path, baudRate });
 
-    const parser = currentPort.pipe(new ReadlineParser({ delimiter: '\r\n' }));
-
-    parser.on('data', (data: string) => {
+    // Qtrainer_YB는 버튼 누름마다 단일 ASCII 문자를 전송 (줄바꿈 없음)
+    // '1'=왼손, '2'=오른손, '3'=왼발, '4'=오른발
+    currentPort.on('data', (chunk: Buffer) => {
       if (mainWindow) {
-        mainWindow.webContents.send('serial:data', data.trim());
+        const str = chunk.toString('ascii');
+        for (const char of str) {
+          mainWindow.webContents.send('serial:data', char);
+        }
       }
     });
 

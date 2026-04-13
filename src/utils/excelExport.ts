@@ -312,7 +312,7 @@ export async function exportToExcel(report: ComprehensiveAssessmentReport): Prom
     row.getCell(2).value = Math.round(result.sessionResults.taskAverage);
     row.getCell(3).value = result.sessionResults.classLevel;
     row.getCell(4).value = result.sessionResults.accuracyRate;
-    row.getCell(5).value = result.sessionResults.totalInputs;
+    row.getCell(5).value = result.sessionResults.totalBeats;
     row.getCell(6).value = result.sessionResults.responseRate;
 
     // 정렬 및 테두리

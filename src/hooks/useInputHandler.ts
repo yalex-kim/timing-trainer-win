@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
+import type React from 'react';
 import type { InputType, InputEvent } from '@/types/evaluation';
 import { InputDeviceMapper } from '@/config/inputMapping';
 
@@ -13,6 +14,7 @@ interface UseInputHandlerProps {
   enableMIDI?: boolean;
   enableHID?: boolean;
   enableGamepad?: boolean;
+  startTimeRef?: React.MutableRefObject<number>;
 }
 
 export function useInputHandler({
@@ -21,17 +23,14 @@ export function useInputHandler({
   enableMIDI = false,
   enableHID = false,
   enableGamepad = false,
+  startTimeRef: externalStartTimeRef,
 }: UseInputHandlerProps) {
-  const startTimeRef = useRef<number>(0);
+  const internalStartTimeRef = useRef<number>(0);
+  const startTimeRef = externalStartTimeRef ?? internalStartTimeRef;
   const midiAccessRef = useRef<any>(null);
   const hidDeviceRef = useRef<any>(null);
   const gamepadIntervalRef = useRef<number | null>(null);
   const lastGamepadStateRef = useRef<Map<number, boolean>>(new Map());
-
-  // 세션 시작 시간 설정
-  useEffect(() => {
-    startTimeRef.current = performance.now();
-  }, []);
 
   // ============================================================================
   // 키보드 입력 처리
@@ -258,42 +257,37 @@ export function useInputHandler({
   }, [enableGamepad, onInput]);
 
   // ============================================================================
-  // Serial Port 입력 처리 (Electron IPC)
+  // Serial Port 입력 처리 (Electron IPC) - Qtrainer_YB 프로토콜
   // ============================================================================
 
   useEffect(() => {
-    // window.electronAPI가 존재할 때만 등록
-    if (window.electronAPI) {
-      window.electronAPI.onData((data: string) => {
-        console.log('Serial Data:', data);
-        
-        // 데이터 파싱 로직 (예: "LEFT_HAND", "1", "A" 등)
-        // 여기서는 간단히 매핑 테이블을 사용하거나 규칙을 정해야 함
-        let inputType: InputType | null = null;
+    if (!window.electronAPI) return;
 
-        // 예시 프로토콜:
-        // L = Left Hand
-        // R = Right Hand
-        // F = Left Foot
-        // G = Right Foot
-        const command = data.trim().toUpperCase();
-        
-        if (command === 'L' || command === 'LEFT_HAND') inputType = 'left-hand';
-        else if (command === 'R' || command === 'RIGHT_HAND') inputType = 'right-hand';
-        else if (command === 'F' || command === 'LEFT_FOOT') inputType = 'left-foot';
-        else if (command === 'G' || command === 'RIGHT_FOOT') inputType = 'right-foot';
+    window.electronAPI.onData((data: string) => {
+      // Qtrainer_YB 프로토콜: 버튼 누름 시 단일 ASCII 문자 전송 (115200 baud)
+      // '1' = Left Hand (왼손)
+      // '2' = Right Hand (오른손)
+      // '3' = Left Foot (왼발)
+      // '4' = Right Foot (오른발)
+      // 공백/제어문자 및 초기화 메시지('System Ready' 등)는 무시
+      const QTRAINER_MAP: Record<string, InputType> = {
+        '1': 'left-hand',
+        '2': 'right-hand',
+        '3': 'left-foot',
+        '4': 'right-foot',
+      };
 
-        if (inputType) {
-          const inputEvent: InputEvent = {
-            type: inputType,
-            timestamp: performance.now(), // timestamp 조정 필요시 로직 추가
-            source: 'serial',
-            rawData: { data },
-          };
-          onInput(inputEvent);
-        }
-      });
-    }
+      const inputType = QTRAINER_MAP[data];
+      if (!inputType) return;
+
+      const inputEvent: InputEvent = {
+        type: inputType,
+        timestamp: performance.now() - startTimeRef.current,
+        source: 'serial',
+        rawData: { data },
+      };
+      onInput(inputEvent);
+    });
   }, [onInput]);
 
   return null;

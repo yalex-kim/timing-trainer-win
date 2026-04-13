@@ -1,17 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts';
+import { useRef, useState } from 'react';
 import type { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
@@ -91,7 +80,6 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         const sectionHeight = img.height * scale; // mm 단위
 
         // 새 페이지가 필요한지 확인 (섹션 + 간격 포함)
-        const totalHeight = sectionHeight + section.spacing;
         const needsNewPage = section.forceNewPage ||
                              (!isFirstPage && currentPageY + sectionHeight > contentHeight);
 
@@ -669,7 +657,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
                       {result.sessionResults.accuracyRate}%
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center">
-                      {result.sessionResults.totalInputs}
+                      {result.sessionResults.totalBeats}
                     </td>
                   </tr>
                 ))}

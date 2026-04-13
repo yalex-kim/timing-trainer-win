@@ -70,6 +70,7 @@ export default function TrainingPage() {
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
+  const startTrainingRef = useRef<(() => void) | null>(null);
 
   // sessionRef 동기화
   useEffect(() => {
@@ -137,6 +138,11 @@ export default function TrainingPage() {
     setPhase('training');
   }, [totalBeats, pattern, customSequence, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
 
+  // startTrainingRef 동기화 — stale closure 방지
+  useEffect(() => {
+    startTrainingRef.current = startTraining;
+  }, [startTraining]);
+
   // 카운트다운 로직
   useEffect(() => {
     if (phase === 'countdown' && countdown > 0) {
@@ -145,9 +151,9 @@ export default function TrainingPage() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (phase === 'countdown' && countdown === 0) {
-      startTraining();
+      startTrainingRef.current?.();
     }
-  }, [phase, countdown, startTraining]);
+  }, [phase, countdown]);
 
   // 세션 종료
   const finishSession = useCallback(() => {
@@ -197,7 +203,7 @@ export default function TrainingPage() {
         }
       }
 
-      if (closestBeatIndex === -1 || minDistance > 500) return prev;
+      if (closestBeatIndex === -1 || minDistance > intervalMs * 0.75) return prev;
 
       const currentBeatData = prev.beats[closestBeatIndex];
 
@@ -231,6 +237,7 @@ export default function TrainingPage() {
   useInputHandler({
     onInput: handleInput,
     enableKeyboard: phase === 'training',
+    startTimeRef,
   });
 
   // 터치 입력 핸들러

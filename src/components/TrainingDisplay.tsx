@@ -29,7 +29,7 @@ interface TrainingDisplayProps {
 type BodyPartType = 'left-hand' | 'right-hand' | 'left-foot' | 'right-foot';
 
 export function TrainingDisplay({
-  trainingType,
+  trainingType: _trainingType,
   bodyPart,
   trainingRange,
   bpm,
@@ -40,7 +40,7 @@ export function TrainingDisplay({
   currentSide,
   currentFeedback,
   currentBeatData,
-  nextBeatData,
+  nextBeatData: _nextBeatData,
   onLeftTouch,
   onRightTouch,
   onExit,

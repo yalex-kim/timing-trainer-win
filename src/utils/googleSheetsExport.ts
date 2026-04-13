@@ -100,7 +100,7 @@ export async function exportToGoogleSheets(
 
   try {
     // Google Sheets Web App으로 데이터 전송
-    const response = await fetch(GOOGLE_SHEETS_URL, {
+    await fetch(GOOGLE_SHEETS_URL, {
       method: 'POST',
       mode: 'no-cors', // Google Apps Script는 CORS를 지원하지 않음
       headers: {
@@ -129,5 +129,5 @@ export async function exportToGoogleSheets(
  * Google Sheets URL이 설정되어 있는지 확인
  */
 export function isGoogleSheetsConfigured(): boolean {
-  return !!GOOGLE_SHEETS_URL && GOOGLE_SHEETS_URL.length > 0;
+  return GOOGLE_SHEETS_URL !== '';
 }
