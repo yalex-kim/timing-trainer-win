@@ -13,6 +13,8 @@ dist-ssr
 dist-electron
 *.local
 .claude
+.serena
+release
 
 # Editor directories and files
 .vscode/*
