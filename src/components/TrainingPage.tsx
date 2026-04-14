@@ -188,9 +188,10 @@ export default function TrainingPage() {
       let closestBeatIndex = -1;
       let minDistance = Infinity;
 
-      const estimatedBeatIndex = Math.round(inputTimestamp / intervalMs);
-      const searchStart = Math.max(0, estimatedBeatIndex - 2);
-      const searchEnd = Math.min(prev.beats.length - 1, estimatedBeatIndex + 2);
+      // floor/ceil 기반 탐색: 이전 비트가 이미 맞춰진 상태에서
+      // 다음 비트를 일찍 누르는 경우도 탐색 창에 항상 포함되도록 함
+      const searchStart = Math.max(0, Math.floor(inputTimestamp / intervalMs) - 1);
+      const searchEnd = Math.min(prev.beats.length - 1, Math.ceil(inputTimestamp / intervalMs) + 1);
 
       for (let i = searchStart; i <= searchEnd; i++) {
         const beat = prev.beats[i];
@@ -203,7 +204,9 @@ export default function TrainingPage() {
         }
       }
 
-      if (closestBeatIndex === -1 || minDistance > intervalMs * 0.75) return prev;
+      // 임계값을 intervalMs 전체로 확장: 어떤 BPM이든 비트 구간 전체를 커버하여
+      // 음수(조기) 타이밍도 누락 없이 측정
+      if (closestBeatIndex === -1 || minDistance > intervalMs) return prev;
 
       const currentBeatData = prev.beats[closestBeatIndex];
 

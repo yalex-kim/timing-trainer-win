@@ -187,19 +187,18 @@ export default function AssessmentPage() {
     const currentSession = sessionRef.current;
     if (!currentSession) return;
 
-    // timestamp를 현재 검사의 startTime 기준으로 재계산
-    const adjustedTimestamp = performance.now() - startTimeRef.current;
-
     setSession((prev) => {
       if (!prev) return prev;
 
-      const inputTimestamp = adjustedTimestamp;
+      // useInputHandler에서 startTimeRef 기준으로 계산된 타임스탬프 사용
+      const inputTimestamp = inputEvent.timestamp;
       let closestBeatIndex = -1;
       let minDistance = Infinity;
 
-      const estimatedBeatIndex = Math.round(inputTimestamp / intervalMs);
-      const searchStart = Math.max(0, estimatedBeatIndex - 2);
-      const searchEnd = Math.min(prev.beats.length - 1, estimatedBeatIndex + 2);
+      // floor/ceil 기반 탐색: 이전 비트가 이미 맞춰진 상태에서
+      // 다음 비트를 일찍 누르는 경우도 탐색 창에 항상 포함되도록 함
+      const searchStart = Math.max(0, Math.floor(inputTimestamp / intervalMs) - 1);
+      const searchEnd = Math.min(prev.beats.length - 1, Math.ceil(inputTimestamp / intervalMs) + 1);
 
       for (let i = searchStart; i <= searchEnd; i++) {
         const beat = prev.beats[i];
@@ -212,7 +211,9 @@ export default function AssessmentPage() {
         }
       }
 
-      if (closestBeatIndex === -1 || minDistance > 500) {
+      // 임계값을 intervalMs 전체로 확장: 어떤 BPM이든 비트 구간 전체를 커버하여
+      // 음수(조기) 타이밍도 누락 없이 측정
+      if (closestBeatIndex === -1 || minDistance > intervalMs) {
         return prev;
       }
 
@@ -220,18 +221,15 @@ export default function AssessmentPage() {
 
       const { feedback, isCorrectInput } = TimingEvaluator.evaluateBeat(
         currentBeatData.expectedTime,
-        adjustedTimestamp,
+        inputTimestamp,
         inputEvent.type,
         currentBeatData.expectedInput
       );
 
-      // 조정된 timestamp로 inputEvent 업데이트
-      const adjustedInputEvent = { ...inputEvent, timestamp: adjustedTimestamp };
-
       const updatedBeat: BeatData = {
         ...currentBeatData,
-        actualInput: adjustedInputEvent,
-        actualTime: adjustedTimestamp,
+        actualInput: inputEvent,
+        actualTime: inputTimestamp,
         deviation: feedback.deviation,
         isCorrectInput,
         isWrongInput: !isCorrectInput,
@@ -251,6 +249,7 @@ export default function AssessmentPage() {
   useInputHandler({
     onInput: handleInput,
     enableKeyboard: phase === 'testing',
+    startTimeRef,
   });
 
   // 터치 입력 핸들러
