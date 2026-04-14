@@ -155,7 +155,10 @@ export default function TrainingPage() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (phase === 'countdown' && countdown === 0) {
-      startTrainingRef.current?.();
+      const timer = setTimeout(() => {
+        startTrainingRef.current?.();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [phase, countdown]);
 
@@ -265,11 +268,22 @@ export default function TrainingPage() {
   useEffect(() => {
     if (!isRunning || phase !== 'training') return;
 
-    beatCounterRef.current = 0; // 훈련 시작 시 초기화
+    beatCounterRef.current = 0;
 
+    // beat 0 즉시 flash (t=0): 첫 번째 가이드가 왼손부터 시작
+    // setInterval은 첫 tick이 intervalMs 후에 발화하므로 beat 0는 별도로 처리
+    if (trainingType === 'audio') playBeep();
+    setIsActive(true);
+    const firstFlashOff = setTimeout(() => setIsActive(false), intervalMs * 0.3);
+
+    if (totalBeats <= 1) {
+      setTimeout(() => finishSession(), 500);
+      return () => clearTimeout(firstFlashOff);
+    }
+
+    // beat 1 ~ totalBeats-1: intervalMs 간격으로 진행
     const beatTimer = setInterval(() => {
-      // Guard: 마지막 비트(totalBeats-1)에 이미 도달했으면 tick 차단
-      // beatCounterRef는 "현재까지 진행된 비트 수"를 동기적으로 추적
+      // Guard: 마지막 비트에 이미 도달했으면 차단
       if (beatCounterRef.current >= totalBeats - 1) {
         clearInterval(beatTimer);
         return;
@@ -285,10 +299,9 @@ export default function TrainingPage() {
       }, intervalMs * 0.3);
 
       const nextBeat = beatCounterRef.current + 1;
-      beatCounterRef.current = nextBeat; // 동기적으로 즉시 업데이트
+      beatCounterRef.current = nextBeat;
 
-      // 마지막 비트(totalBeats-1)에 막 도달했으면 타이머를 즉시 종료
-      // clearInterval을 콜백 본문에서 동기 호출 → 이후 tick 발화 없음
+      // 마지막 비트 도달 시 타이머 즉시 종료 (동기 clearInterval → 여분 tick 없음)
       if (nextBeat >= totalBeats - 1) {
         clearInterval(beatTimer);
         setTimeout(() => finishSession(), 500);
@@ -316,7 +329,10 @@ export default function TrainingPage() {
       });
     }, intervalMs);
 
-    return () => clearInterval(beatTimer);
+    return () => {
+      clearTimeout(firstFlashOff);
+      clearInterval(beatTimer);
+    };
   }, [isRunning, phase, intervalMs, totalBeats, trainingType, playBeep, finishSession]);
 
   // 타이머
@@ -355,18 +371,6 @@ export default function TrainingPage() {
     return <SessionResults results={session.results} onRestart={handleRestart} onExit={handleExit} />;
   }
 
-  if (phase === 'countdown') {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-white text-4xl font-bold mb-8">훈련 시작</h2>
-          <div className="text-white text-9xl font-bold mb-4 animate-pulse">{countdown}</div>
-          <div className="text-white text-2xl">시작까지...</div>
-        </div>
-      </div>
-    );
-  }
-
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
@@ -379,6 +383,40 @@ export default function TrainingPage() {
     e.preventDefault();
     handleTouchInput(bodyPart === 'hand' ? 'right-hand' : 'right-foot');
   };
+
+  if (phase === 'countdown') {
+    return (
+      <div className="relative">
+        {/* 뒤에 훈련 화면 미리 표시 */}
+        <TrainingDisplay
+          trainingType={trainingType}
+          bodyPart={bodyPart}
+          trainingRange={trainingRange}
+          bpm={bpm}
+          timeRemaining={duration * 60}
+          currentBeat={0}
+          totalBeats={totalBeats}
+          isActive={false}
+          currentSide={currentSide}
+          currentFeedback={null}
+          currentBeatData={undefined}
+          nextBeatData={undefined}
+          onLeftTouch={handleLeftTouch}
+          onRightTouch={handleRightTouch}
+          onExit={handleExit}
+          customSequence={customSequence || undefined}
+        />
+        {/* 카운트다운 오버레이 */}
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-white text-4xl font-bold mb-8">훈련 시작</h2>
+            <div className="text-white text-9xl font-bold mb-4 animate-pulse">{countdown}</div>
+            <div className="text-white text-2xl">시작까지...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TrainingDisplay

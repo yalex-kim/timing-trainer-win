@@ -286,7 +286,7 @@ export class TimingEvaluator {
   /**
    * 일관성 점수 계산 (표준편차 기반, 0-100)
    */
-  static calculateConsistency(deviations: number[]): number {
+  static calculateConsistency(deviations: number[], intervalMs: number): number {
     if (deviations.length < 2) return 100;
 
     const mean = deviations.reduce((a, b) => a + b, 0) / deviations.length;
@@ -295,9 +295,11 @@ export class TimingEvaluator {
       deviations.length;
     const stdDev = Math.sqrt(variance);
 
-    // 표준편차를 0-100 점수로 변환
-    // stdDev 0 = 100점, stdDev 100+ = 0점
-    return Math.max(0, Math.min(100, 100 - stdDev));
+    // intervalMs/2를 최대 편차 기준으로 백분율 계산
+    // 입력 허용 창이 ±intervalMs/2로 제한되므로 이를 100% 기준으로 사용
+    // stdDev=0 → 100점, stdDev=intervalMs/2 → 0점
+    const maxDev = intervalMs / 2;
+    return Math.max(0, Math.min(100, (1 - stdDev / maxDev) * 100));
   }
 
   /**
@@ -365,7 +367,7 @@ export class TimingEvaluator {
         : 0;
 
     // 일관성 - NO INPUT 페널티 편차 포함
-    const consistency = this.calculateConsistency(allTADeviations);
+    const consistency = this.calculateConsistency(allTADeviations, intervalMs);
 
     // 신체 부위별 통계
     const inputTypeStats: SessionResults['inputTypeStats'] = {};

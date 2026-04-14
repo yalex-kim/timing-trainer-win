@@ -162,7 +162,7 @@ export function TrainingDisplay({
             {bpm} BPM | {formatTime(timeRemaining)}
           </div>
           <div className="text-white text-lg">
-            {currentBeat} / {totalBeats}
+            {currentBeat + 1} / {totalBeats}
           </div>
           <button
             onClick={onExit}

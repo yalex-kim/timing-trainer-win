@@ -147,7 +147,10 @@ export default function AssessmentPage() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (phase === 'countdown' && countdown === 0) {
-      startTest();
+      const timer = setTimeout(() => {
+        startTest();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [phase, countdown, startTest]);
 
@@ -473,20 +476,7 @@ export default function AssessmentPage() {
     );
   }
 
-  // 카운트다운 화면
-  if (phase === 'countdown') {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-white text-4xl font-bold mb-8">{currentTest.name}</h2>
-          <div className="text-white text-9xl font-bold mb-4 animate-pulse">{countdown}</div>
-          <div className="text-white text-2xl">검사 시작까지...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // 검사 진행 화면
+  // 검사 진행 화면 공통 변수
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
@@ -499,6 +489,39 @@ export default function AssessmentPage() {
     e.preventDefault();
     handleTouchInput(currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot');
   };
+
+  // 카운트다운 화면 — TrainingDisplay를 뒤에 보여주고 반투명 오버레이로 카운트다운 표시
+  if (phase === 'countdown') {
+    return (
+      <div className="relative">
+        <TrainingDisplay
+          trainingType={currentTest.trainingType}
+          bodyPart={currentTest.bodyPart}
+          trainingRange={currentTest.trainingRange}
+          bpm={BPM}
+          timeRemaining={DURATION_SECONDS}
+          currentBeat={0}
+          totalBeats={totalBeats}
+          isActive={false}
+          currentSide={currentSide}
+          currentFeedback={null}
+          currentBeatData={undefined}
+          nextBeatData={undefined}
+          onLeftTouch={handleLeftTouch}
+          onRightTouch={handleRightTouch}
+          onExit={handleExit}
+          title={`${currentTest.name} (${currentTestIndex + 1}/${ASSESSMENT_SEQUENCE.length})`}
+        />
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-white text-4xl font-bold mb-8">{currentTest.name}</h2>
+            <div className="text-white text-9xl font-bold mb-4 animate-pulse">{countdown}</div>
+            <div className="text-white text-2xl">검사 시작까지...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TrainingDisplay
