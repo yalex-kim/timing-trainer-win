@@ -320,19 +320,31 @@ export function generateComprehensiveReport(
     sum + (s.results?.taskAverage || 0), 0
   ) / rightSideSessions.length;
 
-  // Get all deviations for attention calculation
+  // Get all deviations for attention calculation (NO INPUT 비트를 페널티 편차로 포함)
   const visualDeviations: number[] = [];
   const auditoryDeviations: number[] = [];
 
   sessions.forEach(s => {
+    // 비트 간격 유도 (기본값 1000ms = 60 BPM)
+    const intervalMs = s.beats.length >= 2
+      ? s.beats[1].expectedTime - s.beats[0].expectedTime
+      : 1000;
+    const noInputPenalty = intervalMs / 2;
+
     const deviations = s.beats
       .filter(b => b.deviation !== null && b.isCorrectInput)
       .map(b => Math.abs(b.deviation!));
 
+    // NO INPUT 비트를 페널티 편차로 추가
+    const noInputCount = s.beats.filter(b => b.actualTime === null).length;
+    const noInputDeviations = new Array(noInputCount).fill(noInputPenalty);
+
+    const allDeviations = [...deviations, ...noInputDeviations];
+
     if (s.settings.trainingType === 'visual') {
-      visualDeviations.push(...deviations);
+      visualDeviations.push(...allDeviations);
     } else {
-      auditoryDeviations.push(...deviations);
+      auditoryDeviations.push(...allDeviations);
     }
   });
 

@@ -55,8 +55,9 @@ export default function TrainingPage() {
   const [currentFeedback, setCurrentFeedback] = useState<TimingFeedbackType | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(duration * 60);
 
-  // 시각 훈련용 상태
-  const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
+  // 시각 훈련용 상태 — currentBeat에서 파생: 별도 state로 관리 시 마지막 비트에서
+  // clearInterval이 비동기 실행되어 여분 tick이 발생, side가 잘못 토글되는 버그 방지
+  const currentSide: 'left' | 'right' = currentBeat % 2 === 0 ? 'left' : 'right';
   const [isActive, setIsActive] = useState(false);
 
   // Custom hooks
@@ -71,6 +72,9 @@ export default function TrainingPage() {
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
   const startTrainingRef = useRef<(() => void) | null>(null);
+  // 비트 카운터를 타이머 콜백에서 동기적으로 추적: clearInterval을 React state updater
+  // 내부(비동기)가 아닌 콜백 본문(동기)에서 호출하기 위해 필요
+  const beatCounterRef = useRef(0);
 
   // sessionRef 동기화
   useEffect(() => {
@@ -261,18 +265,34 @@ export default function TrainingPage() {
   useEffect(() => {
     if (!isRunning || phase !== 'training') return;
 
+    beatCounterRef.current = 0; // 훈련 시작 시 초기화
+
     const beatTimer = setInterval(() => {
+      // Guard: 마지막 비트(totalBeats-1)에 이미 도달했으면 tick 차단
+      // beatCounterRef는 "현재까지 진행된 비트 수"를 동기적으로 추적
+      if (beatCounterRef.current >= totalBeats - 1) {
+        clearInterval(beatTimer);
+        return;
+      }
+
       if (trainingType === 'audio') {
         playBeep();
       }
 
       setIsActive(true);
-      if (trainingRange === 'both') {
-        setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
-      }
       setTimeout(() => {
         setIsActive(false);
       }, intervalMs * 0.3);
+
+      const nextBeat = beatCounterRef.current + 1;
+      beatCounterRef.current = nextBeat; // 동기적으로 즉시 업데이트
+
+      // 마지막 비트(totalBeats-1)에 막 도달했으면 타이머를 즉시 종료
+      // clearInterval을 콜백 본문에서 동기 호출 → 이후 tick 발화 없음
+      if (nextBeat >= totalBeats - 1) {
+        clearInterval(beatTimer);
+        setTimeout(() => finishSession(), 500);
+      }
 
       setCurrentBeat((prev) => {
         const currentSession = sessionRef.current;
@@ -292,17 +312,12 @@ export default function TrainingPage() {
           }
         }
 
-        if (prev + 1 >= totalBeats) {
-          clearInterval(beatTimer);
-          setTimeout(() => finishSession(), 500);
-          return prev;
-        }
-        return prev + 1;
+        return nextBeat;
       });
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, phase, intervalMs, totalBeats, trainingType, trainingRange, playBeep, finishSession]);
+  }, [isRunning, phase, intervalMs, totalBeats, trainingType, playBeep, finishSession]);
 
   // 타이머
   useEffect(() => {

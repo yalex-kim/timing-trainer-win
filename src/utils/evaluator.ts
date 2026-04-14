@@ -312,11 +312,24 @@ export class TimingEvaluator {
     const correctInputBeats = validBeats.filter((b) => b.isCorrectInput);
     const wrongInputBeats = validBeats.filter((b) => b.isWrongInput);
 
-    // Task Average (TA) 계산 - 올바른 입력만 사용
-    const deviations = correctInputBeats.map((b) => Math.abs(b.deviation!));
+    // NO INPUT 비트 수 및 페널티 편차 계산
+    // 비트 간격을 beats 배열에서 유도, 기본값 1000ms (60 BPM)
+    const intervalMs = beats.length >= 2
+      ? beats[1].expectedTime - beats[0].expectedTime
+      : 1000;
+    const noInputCount = beats.length - validBeats.length;
+    // NO INPUT = 허용 창(±intervalMs/2)의 최대값으로 페널티 처리
+    const noInputPenalty = intervalMs / 2;
+
+    // Task Average (TA) 계산 - NO INPUT 비트를 페널티 편차로 포함
+    const correctDeviations = correctInputBeats.map((b) => Math.abs(b.deviation!));
+    const allTADeviations = [
+      ...correctDeviations,
+      ...new Array(noInputCount).fill(noInputPenalty),
+    ];
     const taskAverage =
-      deviations.length > 0
-        ? deviations.reduce((a, b) => a + b, 0) / deviations.length
+      allTADeviations.length > 0
+        ? allTADeviations.reduce((a, b) => a + b, 0) / allTADeviations.length
         : 999;
 
     // trainingMode를 AGE_BASED_STANDARDS 키에 맞게 매핑
@@ -334,25 +347,25 @@ export class TimingEvaluator {
 
     const totalResponses = correctInputBeats.length;
 
-    // 피드백 카테고리별 집계
+    // 피드백 카테고리별 집계 - NO INPUT 비트를 miss로 포함
     const feedbackCounts = {
       perfect: validBeats.filter((b) => b.feedback?.category === 'perfect').length,
       excellent: validBeats.filter((b) => b.feedback?.category === 'excellent').length,
       good: validBeats.filter((b) => b.feedback?.category === 'good').length,
       fair: validBeats.filter((b) => b.feedback?.category === 'fair').length,
       poor: validBeats.filter((b) => b.feedback?.category === 'poor').length,
-      miss: validBeats.filter((b) => b.feedback?.category === 'miss').length,
+      miss: validBeats.filter((b) => b.feedback?.category === 'miss').length + noInputCount,
     };
 
-    // 평균 점수
+    // 평균 점수 - NO INPUT(0점)을 전체 비트 수 기준으로 계산
     const averagePoints =
-      validBeats.length > 0
+      beats.length > 0
         ? validBeats.reduce((sum, b) => sum + (b.feedback?.points || 0), 0) /
-          validBeats.length
+          beats.length
         : 0;
 
-    // 일관성
-    const consistency = this.calculateConsistency(deviations);
+    // 일관성 - NO INPUT 페널티 편차 포함
+    const consistency = this.calculateConsistency(allTADeviations);
 
     // 신체 부위별 통계
     const inputTypeStats: SessionResults['inputTypeStats'] = {};
