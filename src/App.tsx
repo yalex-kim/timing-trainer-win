@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SETTINGS } from '@/types';
 import type { TrainingSettings, CustomBodyPart } from '@/types';
@@ -42,6 +42,38 @@ export default function Home() {
     } else {
       setShowUserForm(true);
     }
+  }, []);
+
+  // FTDI 장치 자동 연결 (앱 시작 시 1회)
+  // useRef로 StrictMode의 이중 실행 방지
+  const ftdiAutoConnectDone = useRef(false);
+  useEffect(() => {
+    if (ftdiAutoConnectDone.current) return;
+    ftdiAutoConnectDone.current = true;
+
+    const autoConnectFtdi = async () => {
+      try {
+        const portList = await window.electronAPI.listPorts();
+        const ftdi = portList.find((p: any) => {
+          const mfr = (p.manufacturer ?? '').toLowerCase();
+          const vid = (p.vendorId ?? '').toLowerCase();
+          const pnp = (p.pnpId ?? '').toLowerCase();
+          return (
+            mfr.includes('ftdi') ||
+            mfr.includes('future technology') ||
+            vid === '0403' ||
+            pnp.includes('vid_0403')
+          );
+        });
+        if (ftdi) {
+          await window.electronAPI.connect(ftdi.path, 115200);
+          setSerialStatus({ isConnected: true, portPath: ftdi.path });
+        }
+      } catch {
+        // 자동 연결 실패는 무시 — 사용자가 설정에서 수동 연결 가능
+      }
+    };
+    autoConnectFtdi();
   }, []);
 
   // 사용자 정보 저장
@@ -436,7 +468,11 @@ export default function Home() {
               <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-100 rounded-full">✕</button>
             </div>
             <div className="p-6">
-              <SerialSettings onStatusChange={(isConnected, path) => setSerialStatus({ isConnected, portPath: path })} />
+              <SerialSettings
+                onStatusChange={(isConnected, path) => setSerialStatus({ isConnected, portPath: path })}
+                initialConnected={serialStatus.isConnected}
+                initialPortPath={serialStatus.portPath}
+              />
             </div>
             <div className="p-6 bg-gray-50 border-t border-gray-100">
               <button 

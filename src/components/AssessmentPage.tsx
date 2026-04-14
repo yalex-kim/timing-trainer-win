@@ -156,6 +156,9 @@ export default function AssessmentPage() {
     const currentSession = sessionRef.current;
     if (!currentSession) return;
 
+    // StrictMode 이중 호출 방지: ref를 즉시 null로 초기화
+    sessionRef.current = null;
+
     setIsRunning(false);
 
     const results = TimingEvaluator.evaluateSession(
@@ -374,9 +377,9 @@ export default function AssessmentPage() {
   }
 
   // 완료 화면 (종합 결과)
-  if (phase === 'complete' && completedSessions.length === 8) {
+  if (phase === 'complete' && completedSessions.length >= 8) {
     try {
-      const report = generateComprehensiveReport(completedSessions);
+      const report = generateComprehensiveReport(completedSessions.slice(0, 8));
 
       return (
         <ComprehensiveAssessmentReport

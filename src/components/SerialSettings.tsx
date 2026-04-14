@@ -2,22 +2,42 @@ import { useState, useEffect, useCallback } from 'react';
 
 interface SerialSettingsProps {
   onStatusChange?: (isConnected: boolean, portPath: string) => void;
+  initialConnected?: boolean;
+  initialPortPath?: string;
 }
 
-const SerialSettings = ({ onStatusChange }: SerialSettingsProps) => {
+const SerialSettings = ({ onStatusChange, initialConnected = false, initialPortPath = '' }: SerialSettingsProps) => {
   const [ports, setPorts] = useState<any[]>([]);
-  const [selectedPort, setSelectedPort] = useState('');
+  const [selectedPort, setSelectedPort] = useState(initialPortPath);
   const [baudRate, setBaudRate] = useState(115200);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(initialConnected);
   const [isScanning, setIsScanning] = useState(false);
+
+  const isFtdiPort = (port: any): boolean => {
+    const mfr = (port.manufacturer ?? '').toLowerCase();
+    const vid = (port.vendorId ?? '').toLowerCase();
+    const pnp = (port.pnpId ?? '').toLowerCase();
+    return (
+      mfr.includes('ftdi') ||
+      mfr.includes('future technology') ||
+      vid === '0403' ||
+      pnp.includes('vid_0403')
+    );
+  };
 
   const fetchPorts = useCallback(async () => {
     setIsScanning(true);
     try {
       const portList = await window.electronAPI.listPorts();
-      setPorts(portList);
-      if (portList.length > 0 && !selectedPort) {
-        setSelectedPort(portList[0].path);
+      // FTDI 장치를 목록 최상단으로 정렬
+      const sorted = [...portList].sort((a, b) => {
+        const aFtdi = isFtdiPort(a) ? 0 : 1;
+        const bFtdi = isFtdiPort(b) ? 0 : 1;
+        return aFtdi - bFtdi;
+      });
+      setPorts(sorted);
+      if (sorted.length > 0 && !selectedPort) {
+        setSelectedPort(sorted[0].path);
       }
     } catch (err) {
       console.error('Failed to list ports:', err);
@@ -43,10 +63,11 @@ const SerialSettings = ({ onStatusChange }: SerialSettingsProps) => {
   const handleDisconnect = async () => {
     try {
       await window.electronAPI.disconnect();
-      setIsConnected(false);
-      onStatusChange?.(false, '');
     } catch (err: any) {
       console.error('Disconnect failed:', err);
+    } finally {
+      setIsConnected(false);
+      onStatusChange?.(false, '');
     }
   };
 
@@ -54,7 +75,7 @@ const SerialSettings = ({ onStatusChange }: SerialSettingsProps) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-gray-800">시리얼 포트 설정</h3>
-        <button 
+        <button
           onClick={fetchPorts}
           disabled={isScanning || isConnected}
           className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
@@ -77,7 +98,7 @@ const SerialSettings = ({ onStatusChange }: SerialSettingsProps) => {
             {ports.length === 0 && <option value="">검색된 포트 없음</option>}
             {ports.map((port) => (
               <option key={port.path} value={port.path}>
-                {port.path} {port.manufacturer ? `(${port.manufacturer})` : ''}
+                {isFtdiPort(port) ? '★ ' : ''}{port.path}{port.manufacturer ? ` (${port.manufacturer})` : ''}
               </option>
             ))}
           </select>
@@ -105,8 +126,8 @@ const SerialSettings = ({ onStatusChange }: SerialSettingsProps) => {
           onClick={isConnected ? handleDisconnect : handleConnect}
           disabled={!selectedPort && !isConnected}
           className={`w-full py-3 rounded-lg text-white font-bold transition-all shadow-md ${
-            isConnected 
-              ? 'bg-red-500 hover:bg-red-600' 
+            isConnected
+              ? 'bg-red-500 hover:bg-red-600'
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >

@@ -54,10 +54,40 @@ ipcMain.handle('serial:list', async () => {
   }
 });
 
+
+const closeCurrentPort = (): Promise<void> => {
+  return new Promise<void>((resolve) => {
+    if (!currentPort) return resolve();
+    const port = currentPort;
+    currentPort = null;
+
+    port.removeAllListeners('data');
+
+    const doClose = () => {
+      if (!port.isOpen) return resolve();
+      const onClose = () => resolve();
+      port.once('close', onClose);
+      port.close((err) => {
+        if (err) {
+          port.off('close', onClose);
+          console.error('Error closing port:', err);
+          resolve();
+        }
+      });
+    };
+
+    // 포트가 열리는 중이면 open 이벤트 후에 닫기
+    if ((port as any).opening) {
+      port.once('open', doClose);
+      port.once('error', () => resolve()); // open 실패 시
+    } else {
+      doClose();
+    }
+  });
+};
+
 ipcMain.handle('serial:connect', async (_, path: string, baudRate: number) => {
-  if (currentPort && currentPort.isOpen) {
-    currentPort.close();
-  }
+  await closeCurrentPort();
 
   return new Promise((resolve, reject) => {
     currentPort = new SerialPort({ path, baudRate });
@@ -84,13 +114,8 @@ ipcMain.handle('serial:connect', async (_, path: string, baudRate: number) => {
 });
 
 ipcMain.handle('serial:disconnect', async () => {
-  if (currentPort && currentPort.isOpen) {
-    return new Promise((resolve, reject) => {
-      currentPort?.close((err) => {
-        if (err) reject(err);
-        else resolve(true);
-      });
-    });
-  }
+  console.log('[serial:disconnect] called, currentPort:', currentPort?.path ?? 'null');
+  await closeCurrentPort();
+  console.log('[serial:disconnect] done');
   return true;
 });
