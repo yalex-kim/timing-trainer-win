@@ -309,8 +309,8 @@ export default function TrainingPage() {
 
       setCurrentBeat((prev) => {
         const currentSession = sessionRef.current;
-        if (currentSession && prev > 0) {
-          const previousBeat = currentSession.beats[prev - 1];
+        if (currentSession) {
+          const previousBeat = currentSession.beats[prev];
           if (previousBeat && previousBeat.actualInput === null) {
             const missFeedback: TimingFeedbackType = {
               category: 'miss',
