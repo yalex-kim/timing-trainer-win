@@ -204,9 +204,9 @@ export default function TrainingPage() {
         }
       }
 
-      // 임계값을 intervalMs 전체로 확장: 어떤 BPM이든 비트 구간 전체를 커버하여
-      // 음수(조기) 타이밍도 누락 없이 측정
-      if (closestBeatIndex === -1 || minDistance > intervalMs) return prev;
+      // 허용 창을 ±intervalMs/2로 제한: 각 비트의 절반 구간만 허용하여
+      // 늦은 입력이 다음 비트에 잘못 할당되는 현상 방지
+      if (closestBeatIndex === -1 || minDistance > intervalMs / 2) return prev;
 
       const currentBeatData = prev.beats[closestBeatIndex];
 
