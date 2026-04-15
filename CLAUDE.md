@@ -35,7 +35,7 @@ npm run lint         # ESLint 검사
 
 1. 사용자가 프로필(이름, 생년월일, 성별) 입력 → **localStorage** 저장
 2. 모드 + 신체 부위 순서 + BPM 선택 → 훈련/평가 페이지로 이동
-3. 훈련 페이지가 **Web Audio API** (`AudioContext`)로 메트로놈 비트를 생성하고 키보드(A/S/D/F 키 → 신체 부위 매핑) 또는 시리얼 포트로부터 입력 타임스탬프 수집
+3. 훈련 페이지가 **Web Audio API** (`AudioContext`)로 메트로놈 비트를 생성하고 키보드(E/I/C/M 키 → 신체 부위 매핑) 또는 시리얼 포트로부터 입력 타임스탬프 수집
 4. `src/utils/evaluator.ts`가 **Task Average (TA)** = 타이밍 편차의 중앙값을 계산하고 기준표에서 등급으로 매핑
 5. 평가 모드는 8개의 순차적 테스트(4 신체 부위 × 2 자극 유형: 시각/청각) 실행
 6. 결과를 **ExcelJS** (XLSX) 또는 **jsPDF + html-to-image** (PDF)로 내보내기
@@ -53,9 +53,9 @@ npm run lint         # ESLint 검사
 
 키보드(기본), USB 시리얼 장치(`serialport` npm 패키지), 터치 버튼에서 입력을 받습니다. 모두 `InputMapping` 인터페이스를 통해 라우팅됩니다.
 
-### Qtrainer_YB 시리얼 프로토콜
+### Timing-Trainer 시리얼 프로토콜
 
-**하드웨어:** AVR 마이크로컨트롤러 기반 4-채널 입력 단말 (Atmel Studio 프로젝트: `C:\Users\user\Documents\Atmel Studio\7.0\Qtrainer_YB\Qtrainer_YB`)
+**하드웨어:** AVR 마이크로컨트롤러 기반 4-채널 입력 단말
 
 **시리얼 통신 설정:**
 - Baud Rate: **115200**
@@ -72,7 +72,7 @@ npm run lint         # ESLint 검사
 
 **구현 위치:**
 - `electron/main.ts` — `SerialPort` raw `data` 이벤트로 수신, 문자 단위로 렌더러에 전달
-- `src/hooks/useInputHandler.ts` — `QTRAINER_MAP` 객체로 문자 → `InputType` 매핑
+- `src/hooks/useInputHandler.ts` — `TIMING_TRAINER_MAP` 객체로 문자 → `InputType` 매핑
 
 ### Windows 패키징
 
