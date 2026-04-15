@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import fs from 'fs';
+import ExcelJS from 'exceljs';
 import { SerialPort } from 'serialport';
 
 let mainWindow: BrowserWindow | null = null;
@@ -111,6 +113,68 @@ ipcMain.handle('serial:connect', async (_, path: string, baudRate: number) => {
       reject(err.message);
     });
   });
+});
+
+ipcMain.handle('file:savePDF', async (_, fileName: string, buffer: number[]) => {
+  // 패키징 시: 실행파일 옆 TT_Result 폴더, 개발 시: 프로젝트 루트 옆 TT_Result 폴더
+  const baseDir = app.isPackaged
+    ? path.dirname(app.getPath('exe'))
+    : path.resolve(__dirname, '../..');
+  const resultDir = path.join(baseDir, 'TT_Result');
+
+  if (!fs.existsSync(resultDir)) {
+    fs.mkdirSync(resultDir, { recursive: true });
+  }
+
+  const filePath = path.join(resultDir, fileName);
+  fs.writeFileSync(filePath, Buffer.from(buffer));
+  return filePath;
+});
+
+const EXCEL_HEADERS = [
+  '날짜', '시간', '이름', '성별', '나이', '검사명',
+  'Task Average(ms)', '등급', '정답률(%)', '응답률(%)',
+  'PERFECT', 'EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'MISS',
+  '빠른반응(%)', '느린반응(%)', '정확반응(%)', '표준편차',
+];
+const EXCEL_KEYS = [
+  'date', 'time', 'name', 'gender', 'age', 'testName',
+  'taskAverage', 'classLevel', 'accuracyRate', 'responseRate',
+  'perfectCount', 'excellentCount', 'goodCount', 'fairCount', 'poorCount', 'missCount',
+  'earlyHitPercent', 'lateHitPercent', 'onTargetPercent', 'standardDeviation',
+];
+
+ipcMain.handle('file:appendExcel', async (_, rows: Record<string, unknown>[]) => {
+  const baseDir = app.isPackaged
+    ? path.dirname(app.getPath('exe'))
+    : path.resolve(__dirname, '../..');
+  const resultDir = path.join(baseDir, 'TT_Result');
+
+  if (!fs.existsSync(resultDir)) {
+    fs.mkdirSync(resultDir, { recursive: true });
+  }
+
+  const filePath = path.join(resultDir, 'TimingTrainer_Assessment_Data.xlsx');
+  const workbook = new ExcelJS.Workbook();
+  let worksheet: ExcelJS.Worksheet;
+
+  if (fs.existsSync(filePath)) {
+    await workbook.xlsx.readFile(filePath);
+    worksheet = workbook.getWorksheet('결과') ?? workbook.addWorksheet('결과');
+  } else {
+    worksheet = workbook.addWorksheet('결과');
+    const headerRow = worksheet.addRow(EXCEL_HEADERS);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+    worksheet.columns = EXCEL_KEYS.map(() => ({ width: 16 }));
+  }
+
+  for (const row of rows) {
+    worksheet.addRow(EXCEL_KEYS.map(k => row[k] ?? ''));
+  }
+
+  await workbook.xlsx.writeFile(filePath);
+  return filePath;
 });
 
 ipcMain.handle('serial:disconnect', async () => {

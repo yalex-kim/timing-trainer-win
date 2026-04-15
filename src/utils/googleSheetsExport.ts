@@ -12,7 +12,7 @@ const GOOGLE_SHEETS_URL = ''; // 기능 일시 중지
 /**
  * ComprehensiveAssessmentReport를 Google Sheets에 저장할 수 있는 형태로 변환
  */
-function formatDataForGoogleSheets(report: ComprehensiveAssessmentReport) {
+export function formatDataForGoogleSheets(report: ComprehensiveAssessmentReport) {
   const results = report.individualResults.map((individualResult) => {
     const { testName, sessionResults } = individualResult;
     const session = report.sessions.find(s => {
