@@ -329,10 +329,16 @@ export class TimingEvaluator {
       ...correctDeviations,
       ...new Array(noInputCount).fill(noInputPenalty),
     ];
-    const taskAverage =
-      allTADeviations.length > 0
-        ? allTADeviations.reduce((a, b) => a + b, 0) / allTADeviations.length
-        : 999;
+    // TA = 중앙값 (median) — IM 연구 표준
+    const taskAverage = allTADeviations.length > 0
+      ? (() => {
+          const sorted = [...allTADeviations].sort((a, b) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          return sorted.length % 2 === 0
+            ? (sorted[mid - 1] + sorted[mid]) / 2
+            : sorted[mid];
+        })()
+      : 999;
 
     // trainingMode를 AGE_BASED_STANDARDS 키에 맞게 매핑
     const evaluationMode = trainingMode === 'audio' ? 'auditory' : trainingMode;

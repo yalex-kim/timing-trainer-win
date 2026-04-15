@@ -14,7 +14,7 @@ import type {
   LearningStyle,
   TimingClass,
 } from '@/types/evaluation';
-import { getAgeGroup } from './evaluator';
+import { getAgeGroup, determineClassByAge } from './evaluator';
 
 // ============================================================================
 // Percentile Calculation (Normal Distribution Based)
@@ -348,9 +348,9 @@ export function generateComprehensiveReport(
     }
   });
 
-  // Determine class levels (use first session of each type)
-  const visualClass = visualSessions[0].results?.classLevel || 1;
-  const auditoryClass = auditorySessions[0].results?.classLevel || 1;
+  // Determine class levels — 전체 세션 평균 TA에서 연령 기준으로 재산출
+  const visualClass = determineClassByAge(visualTaskAverage, age, 'visual');
+  const auditoryClass = determineClassByAge(auditoryTaskAverage, age, 'auditory');
 
   // Calculate all metrics
   const visualCapability = calculateProcessingCapability(

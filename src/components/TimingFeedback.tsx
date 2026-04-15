@@ -30,6 +30,7 @@ export default function TimingFeedback({
       style={{
         top: '50%',
         left: '50%',
+        transform: 'translate(-50%, -50%)',
         animation: 'bounce-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
