@@ -32,6 +32,8 @@ npm run build:win
 npm run build:dir
 ```
 
+> **개발 환경 주의**: Claude Code 터미널에서 `npm run dev` 실행 시 `ELECTRON_RUN_AS_NODE=1` 환경변수로 인해 창이 열리지 않을 수 있습니다. 별도의 PowerShell/CMD 터미널에서 실행하세요.
+
 ## 주요 기능
 
 ### 훈련 모드
@@ -45,19 +47,57 @@ npm run build:dir
 - 학습 유형(시각/청각 우세), 좌우뇌 균형, 지속성 분석 포함 통합 보고서
 
 ### 결과 내보내기
-- Excel(XLSX) 및 PDF 형식 지원
+
+결과 파일은 실행파일 옆 `TT_Result/` 폴더에 자동 저장됩니다.
+
+| 형식 | 저장 경로 | 비고 |
+|------|----------|------|
+| PDF  | `TT_Result/이름_나이세_타이밍검사_날짜_시분초.pdf` | 검사마다 개별 파일 |
+| Excel | `TT_Result/TimingTrainer_Assessment_Data.xlsx` | 전체 누적 저장 |
+
+- **개발 모드**에서는 프로젝트 루트 상위 폴더 기준으로 저장됩니다.
 
 ## 입력 장치
 
+### 키보드
+
 | 키 | 신체 부위 |
 |----|----------|
-| A | 왼손 |
-| S | 오른손 |
-| D | 왼발 |
-| F | 오른발 |
+| A  | 왼손     |
+| S  | 오른손   |
+| D  | 왼발     |
+| F  | 오른발   |
 
-USB 시리얼 장치도 지원합니다 (앱 설정에서 포트 연결).
+### USB 시리얼 장치 (Qtrainer_YB)
+
+FTDI 장치는 앱 시작 시 자동 연결됩니다. 수동 연결은 우측 상단 설정(⚙️)에서 가능합니다.
+
+- **통신 설정**: Baud Rate 115200, Data bits 8, Stop bits 1, Parity None
+- **프로토콜**: 버튼 누름마다 단일 ASCII 문자 전송
+  - `1` = 왼손, `2` = 오른손, `3` = 왼발, `4` = 오른발
 
 ## 데이터 저장
 
 모든 사용자 프로필 및 세션 기록은 **localStorage**에 저장됩니다. 별도의 서버나 인증이 필요하지 않습니다.
+
+## 릴리즈
+
+GitHub Actions를 통해 Windows 실행파일을 자동으로 빌드합니다.  
+`v*` 형식의 태그를 push하면 빌드가 트리거되고 GitHub Releases에 exe가 업로드됩니다.
+
+```bash
+# 1. package.json의 "version" 수정
+# 2. commit + push (태그 없이)
+git add package.json
+git commit -m "chore: 버전 x.x.x"
+git push origin main
+
+# 3. 동일한 버전으로 태그 push → Actions 트리거
+git tag vx.x.x
+git push origin vx.x.x
+```
+
+빌드 결과물 (GitHub Releases):
+- `Timing Trainer-x.x.x.exe` — 통합 설치 파일 (x64 + ia32)
+- `Timing Trainer-x.x.x-x64.exe` — x64 전용 설치 파일
+- `Timing Trainer-x.x.x-portable.exe` — 포터블 EXE (설치 불필요)
