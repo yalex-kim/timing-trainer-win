@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import electron from 'vite-plugin-electron/simple';
 import renderer from 'vite-plugin-electron-renderer';
 import path from 'path';
+import { version } from './package.json';
 
 export default defineConfig({
   plugins: [
@@ -34,6 +35,9 @@ export default defineConfig({
     }),
     renderer(),
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

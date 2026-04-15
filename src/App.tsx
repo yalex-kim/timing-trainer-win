@@ -272,6 +272,9 @@ export default function Home() {
             <span className="text-white text-xs font-black">TT</span>
           </div>
           <span className="text-base font-bold text-slate-800 tracking-tight">Timing Trainer</span>
+          <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+            v{__APP_VERSION__}
+          </span>
         </div>
 
         {/* 우측 액션 */}
