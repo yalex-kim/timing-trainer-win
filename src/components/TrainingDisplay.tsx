@@ -22,8 +22,8 @@ interface TrainingDisplayProps {
   onLeftTouch: (e: React.TouchEvent) => void;
   onRightTouch: (e: React.TouchEvent) => void;
   onExit: () => void;
-  title?: string; // Optional title for assessment mode
-  customSequence?: CustomBodyPart[] | null; // 커스텀 시퀀스
+  title?: string;
+  customSequence?: CustomBodyPart[] | null;
 }
 
 type BodyPartType = 'left-hand' | 'right-hand' | 'left-foot' | 'right-foot';
@@ -47,53 +47,33 @@ export function TrainingDisplay({
   title,
   customSequence,
 }: TrainingDisplayProps) {
-  // 각 영역이 현재 세션에서 활성화되어 있는지 확인
+
   const isBodyPartEnabled = (part: BodyPartType): boolean => {
-    // 커스텀 시퀀스가 있으면 해당 시퀀스에 포함된 신체 부위만 활성화
     if (customSequence && customSequence.length > 0) {
       return customSequence.includes(part as CustomBodyPart);
     }
-
-    // 기존 로직
     const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
-
-    // 신체 부위가 맞는지 확인
     if (bodyPart !== type) return false;
-
-    // 범위가 맞는지 확인
     if (trainingRange === 'both') return true;
     if (trainingRange === side) return true;
-
     return false;
   };
 
-  // 현재 눌러야 하는 영역인지 확인 (시각/청각 모두 깜빡임 표시)
   const isBodyPartActive = (part: BodyPartType): boolean => {
     if (!isActive) return false;
-
-    // 커스텀 시퀀스 모드: currentBeatData의 expectedTypes를 확인
     if (customSequence && customSequence.length > 0 && currentBeatData) {
       return currentBeatData.expectedInput.expectedTypes.includes(part as InputType);
     }
-
-    // 기존 로직
     const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
-
-    // 신체 부위가 맞는지 확인
     if (bodyPart !== type) return false;
-
-    // 현재 눌러야 하는 쪽인지 확인
     if (trainingRange === 'both' && currentSide === side) return true;
     if (trainingRange === side) return true;
-
     return false;
   };
 
-  // 터치 핸들러
   const handleTouch = (part: BodyPartType) => (e: React.TouchEvent) => {
     e.preventDefault();
-    if (!isBodyPartEnabled(part)) return; // 비활성화된 영역은 터치 무시
-
+    if (!isBodyPartEnabled(part)) return;
     const [side] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
     if (side === 'left') {
       onLeftTouch(e);
@@ -102,43 +82,63 @@ export function TrainingDisplay({
     }
   };
 
-  // 영역 렌더링
+  const progressPercent = totalBeats > 0 ? (currentBeat / totalBeats) * 100 : 0;
+
   const renderBodyPart = (part: BodyPartType) => {
     const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
     const enabled = isBodyPartEnabled(part);
     const active = isBodyPartActive(part);
 
-    // 색상 결정
     let bgColor: string;
-    let opacity = 'opacity-100';
+    let glowStyle: React.CSSProperties = {};
 
     if (!enabled) {
-      // 비활성화된 영역: 회색
-      bgColor = 'bg-gray-600';
-      opacity = 'opacity-40';
+      bgColor = 'bg-gray-900';
     } else {
-      // 활성화된 영역: 신체 부위별 색상
       const colors = getBodyPartColors(type as BodyPart, side);
       bgColor = active ? colors.active : colors.inactive;
-    }
 
-    // 아이콘 크기 및 밝기
-    const iconScale = active ? 'scale-125' : 'scale-100';
-    const iconBrightness = active ? 'brightness-125' : 'brightness-100';
+      // 활성 시 부드러운 glow 효과
+      if (active) {
+        const glowColors: Record<BodyPartType, string> = {
+          'left-hand':  'rgba(96, 165, 250, 0.4)',
+          'right-hand': 'rgba(248, 113, 113, 0.4)',
+          'left-foot':  'rgba(52, 211, 153, 0.4)',
+          'right-foot': 'rgba(251, 191, 36, 0.4)',
+        };
+        glowStyle = { boxShadow: `inset 0 0 60px 10px ${glowColors[part]}` };
+      }
+    }
 
     return (
       <div
         key={part}
         onTouchStart={handleTouch(part)}
-        className={`flex items-center justify-center border-2 border-gray-800 transition-all duration-200 ${
+        style={glowStyle}
+        className={`relative flex items-center justify-center transition-all duration-200 ${
           enabled ? 'cursor-pointer' : 'cursor-not-allowed'
-        } ${bgColor} ${opacity}`}
+        } ${bgColor} ${!enabled ? 'opacity-30' : ''}`}
       >
-        <div className={`text-white text-center pointer-events-none transition-transform duration-200 ${iconScale} ${iconBrightness}`}>
-          <div className="text-7xl mb-2">{getBodyPartIcon(type as BodyPart, side)}</div>
-          <div className="text-2xl font-bold">{getBodyPartLabel(type as BodyPart, side)}</div>
+        {/* 구분선 */}
+        <div className="absolute inset-0 border border-gray-800 pointer-events-none" />
+
+        <div
+          className={`text-white text-center pointer-events-none select-none transition-all duration-200 ${
+            active ? 'scale-110' : 'scale-100'
+          }`}
+        >
+          <div className={`text-6xl mb-2 transition-all duration-200 ${active ? 'drop-shadow-lg' : ''}`}>
+            {getBodyPartIcon(type as BodyPart, side)}
+          </div>
+          <div className="text-xl font-bold tracking-wide">
+            {getBodyPartLabel(type as BodyPart, side)}
+          </div>
           {enabled && (
-            <div className="mt-2 bg-black/30 px-3 py-1 rounded text-xl font-mono font-black">
+            <div className={`mt-2.5 inline-block px-3 py-1 rounded-md text-sm font-mono font-black tracking-widest transition-all duration-200 ${
+              active
+                ? 'bg-white/25 text-white'
+                : 'bg-black/30 text-white/70'
+            }`}>
               {KEYBOARD_LABELS[part as InputType]}
             </div>
           )}
@@ -149,31 +149,53 @@ export function TrainingDisplay({
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
-      {/* Header area */}
-      <div className="h-20 flex items-center justify-between px-4 bg-gray-900 border-b-2 border-gray-700">
-        {/* Title (훈련/검사 표시) */}
-        <div className="text-white text-xl font-bold">
-          {title || '훈련 모드'}
+
+      {/* ── 헤더 바 ── */}
+      <div className="flex-shrink-0 h-16 flex items-center px-5 bg-gray-950 border-b border-gray-800">
+
+        {/* 좌측: 타이틀 + 진행 뱃지 */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <span className="text-white font-bold text-base truncate">
+            {title || '훈련 모드'}
+          </span>
+          <span className="text-gray-500 text-sm font-mono flex-shrink-0">
+            {currentBeat + 1}<span className="text-gray-700 mx-0.5">/</span>{totalBeats}
+          </span>
         </div>
 
-        {/* Top info */}
-        <div className="flex items-center gap-4">
-          <div className="text-white text-xl font-bold">
-            {bpm} BPM | {formatTime(timeRemaining)}
+        {/* 중앙: BPM · 남은 시간 */}
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">BPM</span>
+            <span className="text-white text-xl font-black tabular-nums">{bpm}</span>
           </div>
-          <div className="text-white text-lg">
-            {currentBeat + 1} / {totalBeats}
-          </div>
+          <div className="w-px h-5 bg-gray-700" />
+          <span className="text-white text-xl font-black tabular-nums">{formatTime(timeRemaining)}</span>
+        </div>
+
+        {/* 우측: 종료 버튼 */}
+        <div className="flex-1 flex justify-end">
           <button
             onClick={onExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/60 border border-gray-700 hover:border-red-800 text-gray-400 hover:text-red-400 text-sm font-semibold transition-all"
           >
-            ✕
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            종료
           </button>
         </div>
       </div>
 
-      {/* Real-time feedback */}
+      {/* ── 진행 바 ── */}
+      <div className="flex-shrink-0 h-0.5 bg-gray-900">
+        <div
+          className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      {/* ── 실시간 피드백 ── */}
       {currentFeedback && (
         <TimingFeedback
           feedback={currentFeedback}
@@ -181,18 +203,11 @@ export function TrainingDisplay({
         />
       )}
 
-      {/* 4-split grid (2x2) */}
+      {/* ── 2×2 그리드 ── */}
       <div className="flex-1 grid grid-cols-2 grid-rows-2">
-        {/* Top-left: Left hand */}
         {renderBodyPart('left-hand')}
-
-        {/* Top-right: Right hand */}
         {renderBodyPart('right-hand')}
-
-        {/* Bottom-left: Left foot */}
         {renderBodyPart('left-foot')}
-
-        {/* Bottom-right: Right foot */}
         {renderBodyPart('right-foot')}
       </div>
     </div>
