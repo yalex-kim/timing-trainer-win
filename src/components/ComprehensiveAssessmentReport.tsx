@@ -5,7 +5,7 @@ import type { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 import { exportToExcel } from '@/utils/excelExport';
-import { exportToGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
+import { exportToGoogleSheets, formatDataForGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
 
 interface Props {
   report: ComprehensiveAssessmentReport;
@@ -104,7 +104,19 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         isFirstPage = false;
       }
 
-      pdf.save(`${report.patientInfo.name}_타이밍검사_${report.patientInfo.testDate}.pdf`);
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+      const fileName = `${report.patientInfo.name}_${report.patientInfo.age}세_타이밍검사_${report.patientInfo.testDate}_${timeStr}.pdf`;
+      const pdfBuffer = Array.from(new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer));
+
+      const api = window.electronAPI;
+      if (api?.savePDF) {
+        const savedPath = await api.savePDF(fileName, pdfBuffer);
+        alert(`저장 완료:\n${savedPath}`);
+      } else {
+        // 개발 환경(브라우저) 폴백
+        pdf.save(fileName);
+      }
     } catch (error) {
       console.error('PDF export failed:', error);
       alert('PDF 생성에 실패했습니다.');
@@ -113,11 +125,19 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
     }
   };
 
-  // Excel Export
+  // Excel Export (누적 저장 → TT_Result/결과누적.xlsx)
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
-      await exportToExcel(report);
+      const { results } = formatDataForGoogleSheets(report);
+      const api = window.electronAPI;
+      if (api?.appendExcel) {
+        const savedPath = await api.appendExcel(results as Record<string, unknown>[]);
+        alert(`저장 완료:\n${savedPath}`);
+      } else {
+        // 브라우저 폴백 (dev 환경)
+        await exportToExcel(report);
+      }
     } catch (error) {
       console.error('Excel export failed:', error);
       alert('Excel 생성에 실패했습니다.');

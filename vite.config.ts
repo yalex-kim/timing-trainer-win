@@ -15,7 +15,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['serialport'],
+              external: ['electron', 'serialport', 'exceljs'],
             },
           },
         },
@@ -25,7 +25,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['serialport'],
+              external: ['electron', 'serialport', 'exceljs'],
             },
           },
         },
