@@ -96,11 +96,10 @@ export default function Home() {
 
   const addToSequence = (part: CustomBodyPart) => {
     const currentSequence = settings.customSequence || [];
-    if (currentSequence.length >= 4) {
-      alert('최대 4개까지만 선택 가능합니다.');
+    if (currentSequence.length >= 8) {
+      alert('최대 8개까지만 선택 가능합니다.');
       return;
     }
-    if (currentSequence.includes(part)) return;
     setSettings({ ...settings, customSequence: [...currentSequence, part] });
   };
 
@@ -414,7 +413,7 @@ export default function Home() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      훈련 순서 <span className="text-slate-400 normal-case font-normal">(최대 4개)</span>
+                      훈련 순서 <span className="text-slate-400 normal-case font-normal">(최대 8개, 중복 가능)</span>
                     </label>
                     {settings.customSequence && (
                       <button
@@ -430,21 +429,25 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-2">
                     {(['left-hand', 'right-hand', 'left-foot', 'right-foot'] as CustomBodyPart[]).map((part) => {
                       const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
-                      const isSelected = settings.customSequence?.includes(part);
+                      const selectedCount = settings.customSequence?.filter((p) => p === part).length || 0;
                       const colors = partColorMap[part];
                       return (
                         <button
                           key={part}
                           onClick={() => addToSequence(part)}
-                          disabled={isSelected}
-                          className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
-                            isSelected
-                              ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
+                          className={`relative flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
+                            selectedCount > 0
+                              ? `${colors.bg} ${colors.border} ${colors.text}`
                               : `bg-white border-slate-200 text-slate-700 hover:${colors.bg} hover:${colors.border} hover:${colors.text}`
                           }`}
                         >
                           <span className="text-base">{getBodyPartIcon(type as 'hand' | 'foot', side)}</span>
                           <span>{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
+                          {selectedCount > 0 && (
+                            <span className={`absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black bg-white border ${colors.border} ${colors.text}`}>
+                              {selectedCount}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
