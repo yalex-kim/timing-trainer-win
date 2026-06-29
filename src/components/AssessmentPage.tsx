@@ -511,6 +511,7 @@ export default function AssessmentPage() {
           onRightTouch={handleRightTouch}
           onExit={handleExit}
           title={`${currentTest.name} (${currentTestIndex + 1}/${ASSESSMENT_SEQUENCE.length})`}
+          showFeedback={false}
         />
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
           <div className="text-center">
@@ -541,6 +542,7 @@ export default function AssessmentPage() {
       onRightTouch={handleRightTouch}
       onExit={handleExit}
       title={`${currentTest.name} (${currentTestIndex + 1}/${ASSESSMENT_SEQUENCE.length})`}
+      showFeedback={false}
     />
   );
 }

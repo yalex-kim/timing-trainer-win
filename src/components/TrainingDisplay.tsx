@@ -24,6 +24,7 @@ interface TrainingDisplayProps {
   onExit: () => void;
   title?: string;
   customSequence?: CustomBodyPart[] | null;
+  showFeedback?: boolean;
 }
 
 type BodyPartType = 'left-hand' | 'right-hand' | 'left-foot' | 'right-foot';
@@ -46,6 +47,7 @@ export function TrainingDisplay({
   onExit,
   title,
   customSequence,
+  showFeedback = true,
 }: TrainingDisplayProps) {
 
   const isBodyPartEnabled = (part: BodyPartType): boolean => {
@@ -196,7 +198,7 @@ export function TrainingDisplay({
       </div>
 
       {/* ── 실시간 피드백 ── */}
-      {currentFeedback && (
+      {showFeedback && currentFeedback && (
         <TimingFeedback
           feedback={currentFeedback}
           currentPoints={currentFeedback.points}
