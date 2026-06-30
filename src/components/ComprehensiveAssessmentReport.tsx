@@ -1,9 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ComprehensiveAssessmentReport } from '@/types/evaluation';
-import jsPDF from 'jspdf';
-import { toPng } from 'html-to-image';
 import { exportToExcel } from '@/utils/excelExport';
 import { exportToGoogleSheets, formatDataForGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
 
@@ -13,109 +11,25 @@ interface Props {
 }
 
 export default function ComprehensiveAssessmentReportComponent({ report, onClose }: Props) {
-  const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // 각 섹션에 대한 ref
-  const headerRef = useRef<HTMLDivElement>(null);
-  const section1Ref = useRef<HTMLDivElement>(null);
-  const section2Ref = useRef<HTMLDivElement>(null);
-  const section3Ref = useRef<HTMLDivElement>(null);
-  const section4Ref = useRef<HTMLDivElement>(null);
-  const section5Ref = useRef<HTMLDivElement>(null);
-  const section6Ref = useRef<HTMLDivElement>(null);
-  const section7Ref = useRef<HTMLDivElement>(null);
-
-  // PDF Export using html-to-image (섹션별 개별 캡처)
+  // PDF Export — Chromium 네이티브 인쇄 엔진(printToPDF)으로 현재 화면을 그대로 PDF화.
+  // 텍스트가 이미지가 아닌 실제 텍스트로 들어가 선택/검색이 가능하다. 버튼 바는 print:hidden으로,
+  // 섹션 줄바꿈은 print:break-inside-avoid / print:break-before-page(섹션 6)로 제어한다.
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      // PDF 설정
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = {
-        top: 10,
-        bottom: 10,
-        left: 10,
-        right: 10,
-      };
-
-      const contentWidth = pageWidth - margin.left - margin.right;
-      const contentHeight = pageHeight - margin.top - margin.bottom;
-
-      // 섹션별 ref 목록 (spacing: 섹션 아래에 추가할 여백 mm)
-      const sections = [
-        { ref: headerRef, name: 'header', forceNewPage: false, spacing: 8 },
-        { ref: section1Ref, name: 'section1', forceNewPage: false, spacing: 8 },
-        { ref: section2Ref, name: 'section2', forceNewPage: false, spacing: 8 },
-        { ref: section3Ref, name: 'section3', forceNewPage: false, spacing: 8 },
-        { ref: section4Ref, name: 'section4', forceNewPage: false, spacing: 8 },
-        { ref: section5Ref, name: 'section5', forceNewPage: false, spacing: 8 },
-        { ref: section6Ref, name: 'section6', forceNewPage: true, spacing: 8 },  // 페이지 2 시작
-        { ref: section7Ref, name: 'section7', forceNewPage: false, spacing: 0 },  // 마지막 섹션
-      ];
-
-      let currentPageY = 0; // 현재 페이지에서 사용한 높이 (mm)
-      let isFirstPage = true;
-
-      for (const section of sections) {
-        if (!section.ref.current) continue;
-
-        // 섹션 캡처
-        const dataUrl = await toPng(section.ref.current, {
-          quality: 0.95,
-          pixelRatio: 2,
-          backgroundColor: '#ffffff',
-          cacheBust: true,
-        });
-
-        // 이미지 로드
-        const img = new Image();
-        img.src = dataUrl;
-        await new Promise((resolve) => { img.onload = resolve; });
-
-        // 이미지 스케일 계산 (너비 기준으로 contentWidth에 맞춤)
-        const scale = contentWidth / img.width;
-        const sectionHeight = img.height * scale; // mm 단위
-
-        // 새 페이지가 필요한지 확인 (섹션 + 간격 포함)
-        const needsNewPage = section.forceNewPage ||
-                             (!isFirstPage && currentPageY + sectionHeight > contentHeight);
-
-        if (needsNewPage) {
-          pdf.addPage();
-          currentPageY = 0;
-          isFirstPage = false;
-        }
-
-        // 섹션 이미지를 PDF에 추가
-        pdf.addImage(
-          dataUrl,
-          'PNG',
-          margin.left,
-          margin.top + currentPageY,
-          contentWidth,
-          sectionHeight
-        );
-
-        // 섹션 높이 + 간격 추가
-        currentPageY += sectionHeight + section.spacing;
-        isFirstPage = false;
-      }
-
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
       const fileName = `${report.patientInfo.name}_${report.patientInfo.age}세_타이밍검사_${report.patientInfo.testDate}_${timeStr}.pdf`;
-      const pdfBuffer = Array.from(new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer));
 
       const api = window.electronAPI;
-      if (api?.savePDF) {
-        const savedPath = await api.savePDF(fileName, pdfBuffer);
+      if (api?.printToPDF) {
+        const savedPath = await api.printToPDF(fileName);
         alert(`저장 완료:\n${savedPath}`);
       } else {
-        // 개발 환경(브라우저) 폴백
-        pdf.save(fileName);
+        // 개발 환경(브라우저) 폴백 — 인쇄 대화상자에서 'PDF로 저장'을 선택하면 된다.
+        window.print();
       }
     } catch (error) {
       console.error('PDF export failed:', error);
@@ -177,10 +91,38 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
     return '#ef4444';
   };
 
+  // 종합 등급 (8개 검사 평균 클래스, 반올림)
+  const overallGrade = Math.round(
+    report.individualResults.reduce((sum, r) => sum + r.sessionResults.classLevel, 0) / report.individualResults.length
+  );
+
+  // 피드백 등급 분포 집계 (표현 전용 — evaluator.ts 색상/로직과 무관)
+  const feedbackTotals = report.individualResults.reduce(
+    (acc, r) => {
+      acc.perfect += r.sessionResults.perfectCount;
+      acc.excellent += r.sessionResults.excellentCount;
+      acc.good += r.sessionResults.goodCount;
+      acc.fair += r.sessionResults.fairCount;
+      acc.poor += r.sessionResults.poorCount;
+      acc.miss += r.sessionResults.missCount;
+      return acc;
+    },
+    { perfect: 0, excellent: 0, good: 0, fair: 0, poor: 0, miss: 0 }
+  );
+  const feedbackTotal = Object.values(feedbackTotals).reduce((a, b) => a + b, 0) || 1;
+  const FEEDBACK_DIST = [
+    { key: 'perfect', label: 'PERFECT', color: '#1f9d57', count: feedbackTotals.perfect },
+    { key: 'excellent', label: 'EXCELLENT', color: '#5bb98c', count: feedbackTotals.excellent },
+    { key: 'good', label: 'GOOD', color: '#7ca9af', count: feedbackTotals.good },
+    { key: 'fair', label: 'FAIR', color: '#e0b454', count: feedbackTotals.fair },
+    { key: 'poor', label: 'POOR', color: '#e08a3c', count: feedbackTotals.poor },
+    { key: 'miss', label: 'MISS', color: '#d9647a', count: feedbackTotals.miss },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-tt-bg print:bg-white">
       {/* Action Buttons - 상단 고정, PDF 캡처에서 제외 */}
-      <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 shadow-sm">
+      <div className="sticky top-0 z-10 bg-tt-bg border-b border-tt-border-alt shadow-sm print:hidden">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-3 flex flex-wrap gap-3 justify-center">
           {isSheetsConfigured && (
             <button
@@ -197,7 +139,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
           <button
             onClick={handleExportExcel}
             disabled={isExporting}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-bold transition-colors flex items-center gap-2"
+            className="bg-tt-teal hover:bg-tt-teal-dark disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-bold transition-colors flex items-center gap-2"
             title="Excel 파일로 다운로드 (리포트 형식)"
           >
             <span>📊</span>
@@ -207,7 +149,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
           <button
             onClick={handleExportPDF}
             disabled={isExporting}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-bold transition-colors flex items-center gap-2"
+            className="bg-tt-dark-panel hover:bg-[#0c1318] disabled:bg-gray-400 text-white px-6 py-2.5 rounded-lg font-bold transition-colors flex items-center gap-2"
             title="PDF 파일로 다운로드"
           >
             <span>📄</span>
@@ -216,64 +158,44 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
           <button
             onClick={onClose}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2.5 rounded-lg font-bold transition-colors"
+            className="bg-tt-card border border-tt-border-alt text-tt-muted-alt hover:bg-tt-border px-6 py-2.5 rounded-lg font-bold transition-colors"
           >
             닫기
           </button>
         </div>
       </div>
 
-      <div className="p-4 md:p-8">
-        {!isSheetsConfigured && (
-          <div className="max-w-6xl mx-auto mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-            <p className="text-yellow-800">
-              💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
-            </p>
-            <p className="text-yellow-700 mt-1">
-              <code className="bg-yellow-100 px-2 py-1 rounded">docs/GOOGLE_SHEETS_SETUP.md</code> 파일을 참고하여 설정하세요.
-            </p>
-          </div>
-        )}
+      <div className="p-4 md:p-8 print:p-0">
 
-      {/* 보고서 내용 - PDF로 캡처될 영역 */}
-      <div ref={reportRef} className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6 md:p-8">
+      {/* 보고서 내용 - PDF 인쇄(printToPDF) 시 그대로 출력되는 영역 */}
+      <div className="max-w-6xl mx-auto bg-tt-card rounded-lg tt-card-shadow p-6 md:p-8 print:rounded-none">
         {/* Header */}
-        <div ref={headerRef} className="border-b-2 border-gray-300 pb-6 mb-8">
-          <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
-            종합 타이밍 검사 결과
-          </h1>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-sm text-gray-600">이름</div>
-              <div className="text-lg font-bold">{report.patientInfo.name}</div>
+        <div className="bg-tt-dark-panel rounded-xl px-7 py-6 mb-8 flex flex-wrap items-center justify-between gap-4 text-white print:break-inside-avoid">
+          <div>
+            <div className="text-2xl font-extrabold tracking-tight">
+              {report.patientInfo.name} <span className="text-sm font-medium text-tt-dark-label-alt">· {report.patientInfo.gender === 'male' ? '남성' : '여성'} · 만 {report.patientInfo.age}세</span>
             </div>
-            <div>
-              <div className="text-sm text-gray-600">성별</div>
-              <div className="text-lg font-bold">
-                {report.patientInfo.gender === 'male' ? '남성' : '여성'}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">나이</div>
-              <div className="text-lg font-bold">만 {report.patientInfo.age}세</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">검사일</div>
-              <div className="text-lg font-bold">{report.patientInfo.testDate}</div>
+            <div className="font-mono text-xs text-tt-dark-label mt-1.5">타이밍 협응 검사 · {report.patientInfo.testDate}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] text-tt-dark-label tracking-wider font-mono">종합 등급</div>
+            <div className="flex items-baseline gap-1 justify-end">
+              <span className="font-mono text-4xl font-semibold text-[#2dd4bf] leading-none">{overallGrade}</span>
+              <span className="text-sm text-tt-dark-label-alt">/ 7 등급</span>
             </div>
           </div>
         </div>
 
         {/* Section 1: Processing Capability */}
-        <div ref={section1Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
+        <div className="mb-8 print:break-inside-avoid">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4 flex items-center">
+            <span className="bg-tt-teal text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
             시청각 학습능력
           </h2>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Visual Processing */}
-            <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="bg-tt-bg p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-3">시각 처리 능력</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -311,7 +233,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             </div>
 
             {/* Auditory Processing */}
-            <div className="bg-green-50 p-4 rounded-lg">
+            <div className="bg-tt-bg p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-3">청각 처리 능력</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -351,35 +273,32 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 2: Learning Style */}
-        <div ref={section2Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <span className="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
+        <div className="mb-8 print:break-inside-avoid">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4 flex items-center">
+            <span className="bg-tt-teal text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
             학습 스타일
           </h2>
 
-          <div className="bg-purple-50 p-6 rounded-lg">
+          <div className="bg-tt-bg p-6 rounded-lg">
             <div className="text-center mb-4">
-              <div className="text-3xl font-bold mb-2" style={{
-                color: report.learningStyle.dominantStyle === 'balanced' ? '#8b5cf6' :
-                       report.learningStyle.dominantStyle === 'visual' ? '#3b82f6' : '#10b981'
-              }}>
+              <div className="text-3xl font-bold mb-2 text-tt-teal">
                 {report.learningStyle.dominantLabel}
               </div>
-              <div className="text-gray-600">
+              <div className="text-tt-muted">
                 차이: {report.learningStyle.difference}%
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="text-center">
-                <div className="text-sm text-gray-600">시각</div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-sm text-tt-muted">시각</div>
+                <div className="font-mono text-2xl font-bold text-tt-heading">
                   {report.processingCapability.visual.percentile}%
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600">청각</div>
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-sm text-tt-muted">청각</div>
+                <div className="font-mono text-2xl font-bold text-tt-heading">
                   {report.processingCapability.auditory.percentile}%
                 </div>
               </div>
@@ -388,15 +307,15 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 3: Attention */}
-        <div ref={section3Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
+        <div className="mb-8 print:break-inside-avoid">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4 flex items-center">
+            <span className="bg-tt-teal text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
             시청각 주의력
           </h2>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Visual Attention */}
-            <div className="bg-orange-50 p-4 rounded-lg">
+            <div className="bg-tt-bg p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-3">시각 주의력</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -430,7 +349,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             </div>
 
             {/* Auditory Attention */}
-            <div className="bg-orange-50 p-4 rounded-lg">
+            <div className="bg-tt-bg p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-3">청각 주의력</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -466,13 +385,13 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 4: Brain Speed */}
-        <div ref={section4Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <span className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
+        <div className="mb-8 print:break-inside-avoid">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4 flex items-center">
+            <span className="bg-tt-teal text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
             뇌 인지속도
           </h2>
 
-          <div className="bg-red-50 p-6 rounded-lg">
+          <div className="bg-tt-bg p-6 rounded-lg">
             <div className="grid md:grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-sm text-gray-600">평균 Task Average</div>
@@ -508,15 +427,15 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 5: Sustainability */}
-        <div ref={section5Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <span className="bg-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
+        <div className="mb-8 print:break-inside-avoid">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4 flex items-center">
+            <span className="bg-tt-teal text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
             지속성
           </h2>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Visual Sustainability */}
-            <div className="bg-teal-50 p-4 rounded-lg">
+            <div className="bg-tt-bg p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-3">시각 지속성</h3>
               <div className="space-y-3">
                 <div>
@@ -557,7 +476,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             </div>
 
             {/* Auditory Sustainability */}
-            <div className="bg-teal-50 p-4 rounded-lg">
+            <div className="bg-tt-bg p-4 rounded-lg">
               <h3 className="font-bold text-lg mb-3">청각 지속성</h3>
               <div className="space-y-3">
                 <div>
@@ -600,86 +519,103 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 6: Hemisphere Balance */}
-        <div ref={section6Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <span className="bg-indigo-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">6</span>
+        <div className="mb-8 print:break-inside-avoid print:break-before-page">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4 flex items-center">
+            <span className="bg-tt-teal text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">6</span>
             좌우뇌 균형도
           </h2>
 
-          <div className="bg-indigo-50 p-6 rounded-lg">
+          <div className="bg-tt-bg p-6 rounded-lg">
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="text-sm text-gray-600 mb-2">좌뇌</div>
-                <div className="text-4xl font-bold text-blue-600">{report.hemisphereBalance.leftBrain}%</div>
+                <div className="text-sm text-tt-muted mb-2">좌뇌</div>
+                <div className="font-mono text-4xl font-bold text-tt-heading">{report.hemisphereBalance.leftBrain}%</div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600 mb-2">균형도</div>
-                <div className="text-3xl font-bold" style={{
-                  color: report.hemisphereBalance.correlation === '높음' ? '#10b981' :
-                         report.hemisphereBalance.correlation === '보통' ? '#f59e0b' : '#ef4444'
-                }}>
+                <div className="text-sm text-tt-muted mb-2">균형도</div>
+                <div className="text-3xl font-bold text-tt-teal">
                   {report.hemisphereBalance.correlation}
                 </div>
-                <div className="text-sm text-gray-500 mt-1">차이: {report.hemisphereBalance.difference}%</div>
+                <div className="text-sm text-tt-light-muted mt-1">차이: {report.hemisphereBalance.difference}%</div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600 mb-2">우뇌</div>
-                <div className="text-4xl font-bold text-purple-600">{report.hemisphereBalance.rightBrain}%</div>
+                <div className="text-sm text-tt-muted mb-2">우뇌</div>
+                <div className="font-mono text-4xl font-bold text-tt-heading">{report.hemisphereBalance.rightBrain}%</div>
               </div>
             </div>
 
             <div className="mt-6">
-              <div className="w-full bg-gray-200 rounded-full h-8 flex overflow-hidden">
+              <div className="w-full bg-tt-border rounded-full h-3 relative">
+                <div className="absolute left-1/2 -top-0.5 -bottom-0.5 w-0.5 bg-tt-light-muted-alt" />
                 <div
-                  className="bg-blue-500 flex items-center justify-center text-white font-bold"
-                  style={{ width: `${report.hemisphereBalance.leftBrain}%` }}
-                >
-                  {report.hemisphereBalance.leftBrain}%
-                </div>
-                <div
-                  className="bg-purple-500 flex items-center justify-center text-white font-bold"
-                  style={{ width: `${report.hemisphereBalance.rightBrain}%` }}
-                >
-                  {report.hemisphereBalance.rightBrain}%
-                </div>
+                  className="absolute top-0 bottom-0 rounded-full bg-tt-teal"
+                  style={{
+                    left: `${50 - report.hemisphereBalance.difference / 2}%`,
+                    width: `${report.hemisphereBalance.difference}%`,
+                  }}
+                />
               </div>
             </div>
           </div>
         </div>
 
+        {/* 피드백 등급 분포 (표현 전용 집계, PDF 캡처 범위 외) */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-tt-heading mb-4">피드백 등급 분포</h2>
+          <div className="bg-tt-bg p-6 rounded-lg">
+            <div className="flex h-4.5 rounded-md overflow-hidden mb-4">
+              {FEEDBACK_DIST.map((f) => (
+                <div key={f.key} style={{ width: `${(f.count / feedbackTotal) * 100}%`, background: f.color }} />
+              ))}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2.5">
+              {FEEDBACK_DIST.map((f) => (
+                <div key={f.key} className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-sm flex-none" style={{ background: f.color }} />
+                  <span className="text-xs text-tt-muted flex-1">{f.label}</span>
+                  <span className="font-mono text-xs font-semibold text-tt-heading">{f.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Individual Test Results */}
-        <div ref={section7Ref} className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">개별 검사 결과</h2>
+        <div className="mb-8 print:break-inside-avoid">
+          <h2 className="text-2xl font-bold text-tt-heading mb-1">부위별 검사 결과</h2>
+          <p className="text-xs text-tt-light-muted mb-4">
+            평균오차: 비트와 실제 입력 간 타이밍 오차(ms, 낮을수록 정확) · 정답 부위율: 입력한 신체 부위가 지시된 부위와 일치한 비율(타이밍과 무관)
+          </p>
 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-300 px-4 py-2 text-left">검사명</th>
-                  <th className="border border-gray-300 px-4 py-2 text-center">Task Average</th>
-                  <th className="border border-gray-300 px-4 py-2 text-center">Class</th>
-                  <th className="border border-gray-300 px-4 py-2 text-center">정답률</th>
-                  <th className="border border-gray-300 px-4 py-2 text-center">총 입력수</th>
+                <tr className="bg-tt-bg">
+                  <th className="border border-tt-border-alt px-4 py-2 text-left">검사명</th>
+                  <th className="border border-tt-border-alt px-4 py-2 text-center">평균오차</th>
+                  <th className="border border-tt-border-alt px-4 py-2 text-center">등급</th>
+                  <th className="border border-tt-border-alt px-4 py-2 text-center" title="입력한 신체 부위가 지시된 부위와 일치한 비율(타이밍 정확도가 아님)">정답 부위율</th>
+                  <th className="border border-tt-border-alt px-4 py-2 text-center">총 입력수</th>
                 </tr>
               </thead>
               <tbody>
                 {report.individualResults.map((result, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="border border-gray-300 px-4 py-2 font-medium">
+                  <tr key={index} className={index % 2 === 0 ? 'bg-tt-card' : 'bg-tt-bg'}>
+                    <td className="border border-tt-border-alt px-4 py-2 font-medium text-tt-heading">
                       {result.testName}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center font-bold">
+                    <td className="border border-tt-border-alt px-4 py-2 text-center font-mono font-bold text-tt-heading">
                       {Math.round(result.sessionResults.taskAverage)}ms
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
-                      <span className="font-bold text-lg">
+                    <td className="border border-tt-border-alt px-4 py-2 text-center">
+                      <span className="inline-block font-mono font-bold text-sm text-white bg-tt-teal rounded-md px-2.5 py-0.5">
                         {result.sessionResults.classLevel}
                       </span>
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
+                    <td className="border border-tt-border-alt px-4 py-2 text-center font-mono text-tt-heading">
                       {result.sessionResults.accuracyRate}%
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
+                    <td className="border border-tt-border-alt px-4 py-2 text-center font-mono text-tt-heading">
                       {result.sessionResults.totalBeats}
                     </td>
                   </tr>

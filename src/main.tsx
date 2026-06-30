@@ -6,6 +6,7 @@ import App from './App.tsx'
 import TrainingPage from './components/TrainingPage.tsx'
 import AssessmentPage from './components/AssessmentPage.tsx'
 import StandardsPage from './components/StandardsPage.tsx'
+import ReportPreviewDev from './components/ReportPreviewDev.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,14 +29,24 @@ createRoot(document.getElementById('root')!).render(
             </Suspense>
           } 
         />
-        <Route 
-          path="/standards" 
+        <Route
+          path="/standards"
           element={
             <Suspense fallback={<div>Loading...</div>}>
               <StandardsPage />
             </Suspense>
-          } 
+          }
         />
+        {import.meta.env.DEV && (
+          <Route
+            path="/dev/report-preview"
+            element={
+              <Suspense fallback={<div>Loading...</div>}>
+                <ReportPreviewDev />
+              </Suspense>
+            }
+          />
+        )}
       </Routes>
     </HashRouter>
   </StrictMode>,

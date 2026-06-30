@@ -53,6 +53,9 @@ export default function TrainingPage() {
   const [currentBeat, setCurrentBeat] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<TimingFeedbackType | null>(null);
+  // currentFeedback이 어느 입력 타입(부위)에 대한 것인지 — 표시 시점에 currentBeat가 이미
+  // 다음 비트로 넘어가 있을 수 있어, 피드백 생성 시점의 expectedTypes를 별도로 기억해 둔다.
+  const [currentFeedbackTypes, setCurrentFeedbackTypes] = useState<InputType[] | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(duration * 60);
 
   // 시각 훈련용 상태 — currentBeat에서 파생: 별도 state로 관리 시 마지막 비트에서
@@ -238,6 +241,7 @@ export default function TrainingPage() {
       newBeats[closestBeatIndex] = updatedBeat;
 
       setCurrentFeedback(feedback);
+      setCurrentFeedbackTypes(currentBeatData.expectedInput.expectedTypes);
 
       return { ...prev, beats: newBeats };
     });
@@ -322,6 +326,7 @@ export default function TrainingPage() {
               displayText: 'NO INPUT',
             };
             setCurrentFeedback(missFeedback);
+            setCurrentFeedbackTypes(previousBeat.expectedInput.expectedTypes);
           }
         }
 
@@ -399,6 +404,7 @@ export default function TrainingPage() {
           isActive={false}
           currentSide={currentSide}
           currentFeedback={null}
+          currentFeedbackTypes={null}
           currentBeatData={undefined}
           nextBeatData={undefined}
           onLeftTouch={handleLeftTouch}
@@ -430,6 +436,7 @@ export default function TrainingPage() {
       isActive={isActive}
       currentSide={currentSide}
       currentFeedback={currentFeedback}
+      currentFeedbackTypes={currentFeedbackTypes}
       currentBeatData={currentBeatData}
       nextBeatData={nextBeatData}
       onLeftTouch={handleLeftTouch}

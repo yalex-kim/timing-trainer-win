@@ -116,8 +116,8 @@ ipcMain.handle('serial:connect', async (_, path: string, baudRate: number) => {
   });
 });
 
-ipcMain.handle('file:savePDF', async (_, fileName: string, buffer: number[]) => {
-  // 패키징 시: 실행파일 옆 TT_Result 폴더, 개발 시: 프로젝트 루트 옆 TT_Result 폴더
+// 패키징 시: 실행파일 옆 TT_Result 폴더, 개발 시: 프로젝트 루트 옆 TT_Result 폴더
+function getResultDir(): string {
   const baseDir = app.isPackaged
     ? path.dirname(app.getPath('exe'))
     : path.resolve(__dirname, '../..');
@@ -126,9 +126,27 @@ ipcMain.handle('file:savePDF', async (_, fileName: string, buffer: number[]) => 
   if (!fs.existsSync(resultDir)) {
     fs.mkdirSync(resultDir, { recursive: true });
   }
+  return resultDir;
+}
 
-  const filePath = path.join(resultDir, fileName);
-  fs.writeFileSync(filePath, Buffer.from(buffer));
+// 현재 렌더러 화면을 Chromium 네이티브 인쇄 엔진으로 PDF 변환 (텍스트 선택/검색 가능한 진짜 PDF)
+ipcMain.handle('file:printToPDF', async (event, fileName: string) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) {
+    throw new Error('PDF 생성 대상 창을 찾을 수 없습니다.');
+  }
+
+  // margins 단위: Electron 타입 정의 주석은 "픽셀"이라고 되어 있지만 실제로는 Chromium
+  // CDP Page.printToPDF와 동일하게 inch 단위로 동작한다 (px로 넣으면 "margins must be
+  // less than or equal to pageSize" 에러 발생 — 런타임에서 확인). 0.4in ≈ 10mm.
+  const pdfBuffer = await win.webContents.printToPDF({
+    printBackground: true,
+    pageSize: 'A4',
+    margins: { marginType: 'custom', top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 },
+  });
+
+  const filePath = path.join(getResultDir(), fileName);
+  fs.writeFileSync(filePath, pdfBuffer);
   return filePath;
 });
 
@@ -146,16 +164,7 @@ const EXCEL_KEYS = [
 ];
 
 ipcMain.handle('file:appendExcel', async (_, rows: Record<string, unknown>[]) => {
-  const baseDir = app.isPackaged
-    ? path.dirname(app.getPath('exe'))
-    : path.resolve(__dirname, '../..');
-  const resultDir = path.join(baseDir, 'TT_Result');
-
-  if (!fs.existsSync(resultDir)) {
-    fs.mkdirSync(resultDir, { recursive: true });
-  }
-
-  const filePath = path.join(resultDir, 'TimingTrainer_Assessment_Data.xlsx');
+  const filePath = path.join(getResultDir(), 'TimingTrainer_Assessment_Data.xlsx');
   const workbook = new ExcelJS.Workbook();
   let worksheet: ExcelJS.Worksheet;
 

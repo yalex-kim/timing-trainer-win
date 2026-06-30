@@ -7,6 +7,16 @@
 
 import type { SessionResults as SessionResultsType, InputType } from '@/types/evaluation';
 import { getClassInfo, formatTA, evaluateBalance } from '@/utils/evaluator';
+import { BODY_PART_HEX } from '@/utils/bodyPartColors';
+
+const FEEDBACK_PALETTE: Record<string, string> = {
+  perfect: '#1f9d57',
+  excellent: '#5bb98c',
+  good: '#7ca9af',
+  fair: '#e0b454',
+  poor: '#e08a3c',
+  miss: '#d9647a',
+};
 
 interface SessionResultsProps {
   results: SessionResultsType;
@@ -18,115 +28,101 @@ export default function SessionResults({ results, onRestart, onExit }: SessionRe
   const classInfo = getClassInfo(results.classLevel);
 
   return (
-    <div className="fixed inset-0 bg-slate-950 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-tt-bg z-50 overflow-y-auto">
       <div className="min-h-screen flex items-start justify-center p-5 sm:p-8">
         <div className="max-w-3xl w-full my-8 space-y-4">
 
           {/* ── 상단 헤더 ── */}
           <div className="flex items-center justify-between pb-2">
             <div>
-              <h1 className="text-2xl font-bold text-white">훈련 결과</h1>
-              <p className="text-slate-500 text-sm mt-0.5">세션이 완료되었습니다</p>
+              <h1 className="text-2xl font-bold text-tt-heading">훈련 결과</h1>
+              <p className="text-tt-light-muted text-sm mt-0.5">세션이 완료되었습니다</p>
             </div>
             <div className="flex gap-2.5">
               <button
                 onClick={onRestart}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-all"
+                className="px-5 py-2.5 bg-tt-teal hover:bg-tt-teal-dark text-white rounded-xl font-semibold text-sm transition-all"
               >
                 다시 훈련
               </button>
               <button
                 onClick={onExit}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-sm transition-all border border-slate-700"
+                className="px-5 py-2.5 bg-tt-card hover:bg-tt-border text-tt-muted-alt rounded-xl font-semibold text-sm transition-all border border-tt-border-alt"
               >
                 메인으로
               </button>
             </div>
           </div>
 
-          {/* ── 핵심 지표: TA & Class ── */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* ── 핵심 지표: TA & Class (다크 패널) ── */}
+          <div className="bg-tt-dark-panel rounded-2xl p-5 grid grid-cols-2 gap-4 text-white">
             {/* Task Average */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            <div>
+              <div className="text-xs font-semibold text-tt-dark-label uppercase tracking-wider mb-3">
                 Task Average (TA)
               </div>
-              <div className="text-5xl font-black text-white tabular-nums leading-none mb-1">
+              <div className="font-mono text-5xl font-black tabular-nums leading-none mb-1">
                 {formatTA(results.taskAverage)}
               </div>
-              <div className="text-sm text-slate-500 mt-2">평균 타이밍 편차 (ms)</div>
-              <div className="mt-3 pt-3 border-t border-slate-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-xs text-slate-400">낮을수록 정확한 타이밍</span>
-                </div>
-              </div>
+              <div className="text-sm text-tt-dark-label-alt mt-2">평균 타이밍 편차 (ms)</div>
             </div>
 
             {/* Class Level */}
-            <div
-              className="rounded-2xl p-5 relative overflow-hidden"
-              style={{ backgroundColor: `${classInfo?.color || '#6366f1'}18`, border: `1px solid ${classInfo?.color || '#6366f1'}30` }}
-            >
-              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: `${classInfo?.color || '#6366f1'}99` }}>
+            <div className="border-l border-white/10 pl-4">
+              <div className="text-xs font-semibold uppercase tracking-wider mb-3 text-tt-dark-label">
                 Class Level
               </div>
-              <div className="text-5xl font-black leading-none mb-1" style={{ color: classInfo?.color || '#6366f1' }}>
+              <div className="font-mono text-5xl font-black leading-none mb-1 text-[#2dd4bf]">
                 Class {results.classLevel}
               </div>
-              <div className="text-sm font-semibold mt-2" style={{ color: classInfo?.color || '#6366f1' }}>
+              <div className="text-sm font-semibold mt-2 text-tt-dark-label-alt">
                 {classInfo?.label || '평균'}
               </div>
-              {classInfo?.description && (
-                <div className="mt-3 pt-3 border-t" style={{ borderColor: `${classInfo.color}20` }}>
-                  <span className="text-xs" style={{ color: `${classInfo.color}80` }}>{classInfo.description}</span>
-                </div>
-              )}
             </div>
           </div>
 
           {/* ── 3대 지표 ── */}
           <div className="grid grid-cols-3 gap-3">
-            <MetricCard label="평균 점수" value={results.averagePoints.toFixed(1)} unit="/ 100" accent="#8b5cf6" />
-            <MetricCard label="일관성" value={results.consistency.toFixed(1)} unit="/ 100" accent="#10b981" />
-            <MetricCard label="응답률" value={`${results.responseRate.toFixed(1)}%`} unit={`${results.responsiveBeats}/${results.totalBeats}`} accent="#f59e0b" />
+            <MetricCard label="평균 점수" value={results.averagePoints.toFixed(1)} unit="/ 100" accent="#0f6e78" />
+            <MetricCard label="일관성" value={results.consistency.toFixed(1)} unit="/ 100" accent="#1f9d57" />
+            <MetricCard label="응답률" value={`${results.responseRate.toFixed(1)}%`} unit={`${results.responsiveBeats}/${results.totalBeats}`} accent="#e89a1c" />
           </div>
 
           {/* ── 타이밍 분포 ── */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">타이밍 분포</h2>
+          <div className="bg-tt-card border border-tt-border-alt rounded-2xl p-5">
+            <h2 className="text-sm font-semibold text-tt-light-muted uppercase tracking-wider mb-4">타이밍 분포</h2>
             <div className="space-y-3">
-              <DistributionBar label="조기 반응 (Early)"  pct={results.earlyHitPercent}  color="#60a5fa" />
-              <DistributionBar label="정확 (On Target)"   pct={results.onTargetPercent}   color="#34d399" />
-              <DistributionBar label="지연 반응 (Late)"   pct={results.lateHitPercent}    color="#fb923c" />
+              <DistributionBar label="조기 반응 (Early)" pct={results.earlyHitPercent} color="#2f6bd8" />
+              <DistributionBar label="정확 (On Target)" pct={results.onTargetPercent} color="#1f9d57" />
+              <DistributionBar label="지연 반응 (Late)" pct={results.lateHitPercent} color="#e89a1c" />
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-              <span className="text-sm text-slate-400">
-                균형 상태: <span className="text-white font-semibold">{evaluateBalance(results.earlyHitPercent, results.lateHitPercent)}</span>
+            <div className="mt-4 pt-3 border-t border-tt-border-soft flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-tt-light-muted-alt" />
+              <span className="text-sm text-tt-muted">
+                균형 상태: <span className="text-tt-heading font-semibold">{evaluateBalance(results.earlyHitPercent, results.lateHitPercent)}</span>
               </span>
             </div>
           </div>
 
           {/* ── 피드백 분포 ── */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">피드백 분포</h2>
+          <div className="bg-tt-card border border-tt-border-alt rounded-2xl p-5">
+            <h2 className="text-sm font-semibold text-tt-light-muted uppercase tracking-wider mb-4">피드백 분포</h2>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {[
-                { label: 'Perfect',   count: results.perfectCount,   color: '#10b981' },
-                { label: 'Excellent', count: results.excellentCount, color: '#22c55e' },
-                { label: 'Good',      count: results.goodCount,      color: '#84cc16' },
-                { label: 'Fair',      count: results.fairCount,      color: '#eab308' },
-                { label: 'Poor',      count: results.poorCount,      color: '#f97316' },
-                { label: 'Miss',      count: results.missCount,      color: '#ef4444' },
+                { label: 'Perfect', count: results.perfectCount, color: FEEDBACK_PALETTE.perfect },
+                { label: 'Excellent', count: results.excellentCount, color: FEEDBACK_PALETTE.excellent },
+                { label: 'Good', count: results.goodCount, color: FEEDBACK_PALETTE.good },
+                { label: 'Fair', count: results.fairCount, color: FEEDBACK_PALETTE.fair },
+                { label: 'Poor', count: results.poorCount, color: FEEDBACK_PALETTE.poor },
+                { label: 'Miss', count: results.missCount, color: FEEDBACK_PALETTE.miss },
               ].map(({ label, count, color }) => (
                 <div
                   key={label}
                   className="rounded-xl p-3 text-center border"
-                  style={{ backgroundColor: `${color}15`, borderColor: `${color}25` }}
+                  style={{ backgroundColor: `${color}15`, borderColor: `${color}40` }}
                 >
-                  <div className="text-xs font-semibold mb-1.5" style={{ color: `${color}cc` }}>{label}</div>
-                  <div className="text-2xl font-black" style={{ color }}>{count}</div>
+                  <div className="text-xs font-semibold mb-1.5" style={{ color }}>{label}</div>
+                  <div className="font-mono text-2xl font-black" style={{ color }}>{count}</div>
                 </div>
               ))}
             </div>
@@ -134,8 +130,8 @@ export default function SessionResults({ results, onRestart, onExit }: SessionRe
 
           {/* ── 신체 부위별 통계 ── */}
           {Object.keys(results.inputTypeStats).length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">신체 부위별 통계</h2>
+            <div className="bg-tt-card border border-tt-border-alt rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-tt-light-muted uppercase tracking-wider mb-4">신체 부위별 통계</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {Object.entries(results.inputTypeStats).map(([type, stats]) => (
                   <InputTypeCard key={type} type={type as InputType} stats={stats!} />
@@ -146,16 +142,16 @@ export default function SessionResults({ results, onRestart, onExit }: SessionRe
 
           {/* ── 오류 정보 ── */}
           {(results.missedBeats > 0 || results.wrongInputBeats > 0) && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">오류 정보</h2>
+            <div className="bg-tt-card border border-tt-border-alt rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-tt-light-muted uppercase tracking-wider mb-4">오류 정보</h2>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-red-900/20 border border-red-800/30 rounded-xl p-4 text-center">
-                  <div className="text-xs font-semibold text-red-400 mb-1.5">놓친 비트</div>
-                  <div className="text-3xl font-black text-red-400">{results.missedBeats}</div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                  <div className="text-xs font-semibold text-red-500 mb-1.5">놓친 비트</div>
+                  <div className="font-mono text-3xl font-black text-red-500">{results.missedBeats}</div>
                 </div>
-                <div className="bg-orange-900/20 border border-orange-800/30 rounded-xl p-4 text-center">
-                  <div className="text-xs font-semibold text-orange-400 mb-1.5">잘못된 입력</div>
-                  <div className="text-3xl font-black text-orange-400">{results.wrongInputBeats}</div>
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                  <div className="text-xs font-semibold text-orange-500 mb-1.5">잘못된 입력</div>
+                  <div className="font-mono text-3xl font-black text-orange-500">{results.wrongInputBeats}</div>
                 </div>
               </div>
             </div>
@@ -163,19 +159,19 @@ export default function SessionResults({ results, onRestart, onExit }: SessionRe
 
           {/* ── 개선도 ── */}
           {results.taImprovement !== undefined && (
-            <div className="bg-gradient-to-r from-violet-900/40 to-fuchsia-900/40 border border-violet-800/30 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wider mb-4">이전 세션 대비 개선도</h2>
+            <div className="bg-tt-card border border-tt-border-alt rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-tt-teal uppercase tracking-wider mb-4">이전 세션 대비 개선도</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-xs font-semibold text-violet-400 mb-1.5">TA 개선</div>
-                  <div className="text-4xl font-black text-white">
+                  <div className="text-xs font-semibold text-tt-muted mb-1.5">TA 개선</div>
+                  <div className="font-mono text-4xl font-black text-tt-heading">
                     {results.taImprovement > 0 ? '↓' : '↑'} {Math.abs(results.taImprovement).toFixed(1)}%
                   </div>
                 </div>
                 {results.classImprovement !== undefined && (
                   <div className="text-center">
-                    <div className="text-xs font-semibold text-violet-400 mb-1.5">Class 변화</div>
-                    <div className="text-4xl font-black text-white">
+                    <div className="text-xs font-semibold text-tt-muted mb-1.5">Class 변화</div>
+                    <div className="font-mono text-4xl font-black text-tt-heading">
                       {results.classImprovement > 0 ? '↑' : results.classImprovement < 0 ? '↓' : '→'} {Math.abs(results.classImprovement)}
                     </div>
                   </div>
@@ -209,12 +205,12 @@ function MetricCard({
 }) {
   return (
     <div
-      className="rounded-xl p-4 border"
-      style={{ backgroundColor: `${accent}12`, borderColor: `${accent}25` }}
+      className="rounded-xl p-4 border bg-tt-card"
+      style={{ borderColor: `${accent}40` }}
     >
-      <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: `${accent}99` }}>{label}</div>
-      <div className="text-2xl font-black" style={{ color: accent }}>{value}</div>
-      <div className="text-xs mt-1" style={{ color: `${accent}60` }}>{unit}</div>
+      <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: accent }}>{label}</div>
+      <div className="font-mono text-2xl font-black" style={{ color: accent }}>{value}</div>
+      <div className="text-xs mt-1 text-tt-light-muted">{unit}</div>
     </div>
   );
 }
@@ -223,10 +219,10 @@ function DistributionBar({ label, pct, color }: { label: string; pct: number; co
   return (
     <div>
       <div className="flex justify-between items-center mb-1.5">
-        <span className="text-sm text-slate-400">{label}</span>
-        <span className="text-sm font-bold tabular-nums" style={{ color }}>{pct.toFixed(1)}%</span>
+        <span className="text-sm text-tt-muted">{label}</span>
+        <span className="font-mono text-sm font-bold tabular-nums" style={{ color }}>{pct.toFixed(1)}%</span>
       </div>
-      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+      <div className="w-full h-2 bg-tt-border rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -243,35 +239,34 @@ function InputTypeCard({
   type: InputType;
   stats: { count: number; averageDeviation: number; averagePoints: number };
 }) {
-  const typeConfig: Record<InputType, { label: string; emoji: string; color: string }> = {
-    'left-hand':  { label: '왼손',  emoji: '👈', color: '#60a5fa' },
-    'right-hand': { label: '오른손', emoji: '👉', color: '#f87171' },
-    'left-foot':  { label: '왼발',  emoji: '🦵', color: '#34d399' },
-    'right-foot': { label: '오른발', emoji: '🦵', color: '#fbbf24' },
+  const LABELS: Record<InputType, string> = {
+    'left-hand': '왼손',
+    'right-hand': '오른손',
+    'left-foot': '왼발',
+    'right-foot': '오른발',
   };
-  const cfg = typeConfig[type];
+  const color = BODY_PART_HEX[type];
 
   return (
     <div
-      className="rounded-xl p-4 border"
-      style={{ backgroundColor: `${cfg.color}10`, borderColor: `${cfg.color}20` }}
+      className="rounded-xl p-4 border bg-tt-card"
+      style={{ borderColor: `${color}40` }}
     >
       <div className="text-center mb-3">
-        <div className="text-2xl mb-0.5">{cfg.emoji}</div>
-        <div className="text-sm font-bold" style={{ color: cfg.color }}>{cfg.label}</div>
+        <div className="text-sm font-bold" style={{ color }}>{LABELS[type]}</div>
       </div>
       <div className="space-y-1.5 text-xs">
-        <div className="flex justify-between text-slate-400">
+        <div className="flex justify-between text-tt-light-muted">
           <span>입력 횟수</span>
-          <span className="font-bold text-white">{stats.count}</span>
+          <span className="font-bold text-tt-heading">{stats.count}</span>
         </div>
-        <div className="flex justify-between text-slate-400">
+        <div className="flex justify-between text-tt-light-muted">
           <span>평균 편차</span>
-          <span className="font-bold text-white">{stats.averageDeviation.toFixed(1)}ms</span>
+          <span className="font-bold text-tt-heading">{stats.averageDeviation.toFixed(1)}ms</span>
         </div>
-        <div className="flex justify-between text-slate-400">
+        <div className="flex justify-between text-tt-light-muted">
           <span>평균 점수</span>
-          <span className="font-bold text-white">{stats.averagePoints.toFixed(1)}</span>
+          <span className="font-bold text-tt-heading">{stats.averagePoints.toFixed(1)}</span>
         </div>
       </div>
     </div>

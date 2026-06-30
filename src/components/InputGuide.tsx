@@ -7,6 +7,7 @@
 
 import type { InputType } from '@/types/evaluation';
 import { KEYBOARD_LABELS } from '@/config/inputMapping';
+import { BODY_PART_HEX } from '@/utils/bodyPartColors';
 
 interface InputGuideProps {
   show?: boolean;
@@ -45,14 +46,14 @@ export default function InputGuide({
               label="왼손"
               keyLabel={KEYBOARD_LABELS['left-hand']}
               icon="👈"
-              color="bg-blue-500"
+              color={BODY_PART_HEX['left-hand']}
             />
 
             <InputKeyDisplay
               label="오른손"
               keyLabel={KEYBOARD_LABELS['right-hand']}
               icon="👉"
-              color="bg-blue-500"
+              color={BODY_PART_HEX['right-hand']}
             />
           </div>
 
@@ -66,14 +67,14 @@ export default function InputGuide({
               label="왼발"
               keyLabel={KEYBOARD_LABELS['left-foot']}
               icon="🦵"
-              color="bg-green-500"
+              color={BODY_PART_HEX['left-foot']}
             />
 
             <InputKeyDisplay
               label="오른발"
               keyLabel={KEYBOARD_LABELS['right-foot']}
               icon="🦵"
-              color="bg-green-500"
+              color={BODY_PART_HEX['right-foot']}
             />
           </div>
         </div>
@@ -103,7 +104,8 @@ function InputKeyDisplay({ label, keyLabel, icon, color }: InputKeyDisplayProps)
       </div>
 
       <div
-        className={`${color} text-white font-bold text-xl px-4 py-2 rounded-lg min-w-[3rem] text-center shadow-lg`}
+        style={{ background: color }}
+        className="text-white font-bold text-xl px-4 py-2 rounded-lg min-w-12 text-center shadow-lg"
       >
         {keyLabel}
       </div>
@@ -129,16 +131,10 @@ export function KeyHint({ inputType, size = 'medium' }: KeyHintProps) {
     large: 'text-3xl px-6 py-3',
   };
 
-  const colorClasses = {
-    'left-hand': 'bg-blue-500',
-    'right-hand': 'bg-blue-600',
-    'left-foot': 'bg-green-500',
-    'right-foot': 'bg-green-600',
-  };
-
   return (
     <div
-      className={`${colorClasses[inputType]} text-white font-bold rounded-lg ${sizeClasses[size]} inline-block shadow-lg`}
+      style={{ background: BODY_PART_HEX[inputType] }}
+      className={`text-white font-bold rounded-lg ${sizeClasses[size]} inline-block shadow-lg`}
     >
       {keyLabel}
     </div>
@@ -162,12 +158,12 @@ export function KeyboardVisualization() {
           <KeyVisual
             keyLabel={KEYBOARD_LABELS['left-hand']}
             label="왼손"
-            color="bg-blue-500"
+            color={BODY_PART_HEX['left-hand']}
           />
           <KeyVisual
             keyLabel={KEYBOARD_LABELS['right-hand']}
             label="오른손"
-            color="bg-blue-600"
+            color={BODY_PART_HEX['right-hand']}
           />
         </div>
 
@@ -176,12 +172,12 @@ export function KeyboardVisualization() {
           <KeyVisual
             keyLabel={KEYBOARD_LABELS['left-foot']}
             label="왼발"
-            color="bg-green-500"
+            color={BODY_PART_HEX['left-foot']}
           />
           <KeyVisual
             keyLabel={KEYBOARD_LABELS['right-foot']}
             label="오른발"
-            color="bg-green-600"
+            color={BODY_PART_HEX['right-foot']}
           />
         </div>
       </div>
@@ -199,7 +195,8 @@ function KeyVisual({ keyLabel, label, color }: KeyVisualProps) {
   return (
     <div className="text-center">
       <div
-        className={`${color} text-white font-bold text-2xl w-16 h-16 rounded-lg flex items-center justify-center shadow-lg mb-2`}
+        style={{ background: color }}
+        className="text-white font-bold text-2xl w-16 h-16 rounded-lg flex items-center justify-center shadow-lg mb-2"
       >
         {keyLabel}
       </div>

@@ -8,8 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onData: (callback: (data: string) => void) => {
     ipcRenderer.on('serial:data', (_event, value) => callback(value));
   },
-  savePDF: (fileName: string, buffer: number[]) =>
-    ipcRenderer.invoke('file:savePDF', fileName, buffer),
+  printToPDF: (fileName: string) =>
+    ipcRenderer.invoke('file:printToPDF', fileName),
   appendExcel: (rows: Record<string, unknown>[]) =>
     ipcRenderer.invoke('file:appendExcel', rows),
 });

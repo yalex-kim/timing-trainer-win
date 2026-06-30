@@ -1,4 +1,5 @@
 // global.d.ts
+/// <reference types="vite/client" />
 export {};
 
 declare global {
@@ -10,7 +11,7 @@ declare global {
       connect: (path: string, baudRate: number) => Promise<boolean>;
       disconnect: () => Promise<boolean>;
       onData: (callback: (data: string) => void) => void;
-      savePDF: (fileName: string, buffer: number[]) => Promise<string>;
+      printToPDF: (fileName: string) => Promise<string>;
       appendExcel: (rows: Record<string, unknown>[]) => Promise<string>;
     };
   }

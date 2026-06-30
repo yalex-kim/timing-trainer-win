@@ -7,7 +7,9 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import ComprehensiveAssessmentReport from '@/components/ComprehensiveAssessmentReport';
 import { generateComprehensiveReport } from '@/utils/assessmentReport';
 import { TrainingDisplay } from '@/components/TrainingDisplay';
-import type { TrainingType, BodyPart, TrainingRange } from '@/types';
+import AppHeader from '@/components/AppHeader';
+import { BODY_PART_HEX } from '@/utils/bodyPartColors';
+import type { CustomBodyPart, TrainingType, BodyPart, TrainingRange } from '@/types';
 import type {
   BeatData,
   InputEvent,
@@ -42,6 +44,26 @@ const DURATION_SECONDS = 40;
 
 type AssessmentPhase = 'ready' | 'countdown' | 'testing' | 'waiting' | 'complete';
 
+const EyeIcon = ({ className }: { className?: string }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EarIcon = ({ className }: { className?: string }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 0 1-7 0" /><path d="M8.5 8.5a3.5 3.5 0 1 1 7 0c0 2.5-3 2.5-3 5" />
+  </svg>
+);
+
+// 8개 시퀀스를 부위 4행 × 자극타입(청각/시각) 2열로 그룹화 (표시 전용, 순서/로직은 ASSESSMENT_SEQUENCE 그대로)
+const ROW_CONFIG: { part: CustomBodyPart; label: string; audioId: number; visualId: number }[] = [
+  { part: 'left-hand', label: '왼손', audioId: 1, visualId: 2 },
+  { part: 'right-hand', label: '오른손', audioId: 3, visualId: 4 },
+  { part: 'left-foot', label: '왼발', audioId: 5, visualId: 6 },
+  { part: 'right-foot', label: '오른발', audioId: 7, visualId: 8 },
+];
+
 export default function AssessmentPage() {
   const navigate = useNavigate();
 
@@ -63,6 +85,9 @@ export default function AssessmentPage() {
   const [currentBeat, setCurrentBeat] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<TimingFeedbackType | null>(null);
+  // currentFeedback이 어느 입력 타입(부위)에 대한 것인지 — 표시 시점에 currentBeat가 이미
+  // 다음 비트로 넘어가 있을 수 있어, 피드백 생성 시점의 expectedTypes를 별도로 기억해 둔다.
+  const [currentFeedbackTypes, setCurrentFeedbackTypes] = useState<InputType[] | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(DURATION_SECONDS);
 
   // 시각 훈련용 상태
@@ -246,6 +271,7 @@ export default function AssessmentPage() {
       newBeats[closestBeatIndex] = updatedBeat;
 
       setCurrentFeedback(feedback);
+      setCurrentFeedbackTypes(currentBeatData.expectedInput.expectedTypes);
 
       return { ...prev, beats: newBeats };
     });
@@ -305,6 +331,7 @@ export default function AssessmentPage() {
               displayText: 'NO INPUT',
             };
             setCurrentFeedback(missFeedback);
+            setCurrentFeedbackTypes(previousBeat.expectedInput.expectedTypes);
           }
         }
 
@@ -345,13 +372,15 @@ export default function AssessmentPage() {
     setCountdown(5);
     setPhase('countdown');
     setCurrentFeedback(null);
+    setCurrentFeedbackTypes(null);
   }, []);
 
-  // 아무 키나 눌러서 다음 검사 시작
+  // Enter 키로 다음 검사 시작
   useEffect(() => {
     if (phase !== 'waiting') return;
 
-    const handleKeyPress = () => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
       handleNextTest();
     };
 
@@ -429,49 +458,149 @@ export default function AssessmentPage() {
     }
   }
 
-  // 준비 화면
-  if (phase === 'ready') {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
-        <div className="bg-white p-12 rounded-lg shadow-2xl max-w-2xl">
-          <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">타이밍 검사 시작</h1>
-          <div className="mb-8 space-y-4">
-            <p className="text-lg text-gray-700">총 <span className="font-bold text-green-600">8가지 검사</span>를 순서대로 진행합니다.</p>
-            <div className="bg-green-50 rounded-lg p-4">
-              <ol className="list-decimal list-inside space-y-1 text-gray-700">
-                {ASSESSMENT_SEQUENCE.map((test) => <li key={test.id}>{test.name}</li>)}
-              </ol>
-            </div>
-            <p className="text-gray-600">각 검사는 <span className="font-bold">60 BPM</span>으로 <span className="font-bold">40초</span>간 진행됩니다.</p>
-          </div>
-          <div className="space-y-3">
-            <button
-              onClick={() => { setCountdown(5); setPhase('countdown'); }}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-lg font-bold text-xl shadow-lg"
-            >
-              검사 시작
-            </button>
-            <button onClick={handleExit} className="w-full bg-gray-500 text-white py-3 rounded-lg font-medium">홈으로 돌아가기</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // 준비/대기 화면 (8개 시퀀스 진행 그리드 + 다음 검사 사이드바) — phase==='ready'|'waiting' 공용
+  if (phase === 'ready' || phase === 'waiting') {
+    const doneCount = completedSessions.length;
+    const nextIndex = doneCount;
+    const nextTest = ASSESSMENT_SEQUENCE[nextIndex];
+    const isWaiting = phase === 'waiting';
 
-  // 대기 화면
-  if (phase === 'waiting') {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="bg-white p-12 rounded-lg shadow-2xl max-w-2xl text-center">
-          <div className="text-6xl mb-6">✓</div>
-          <h1 className="text-3xl font-bold mb-4 text-gray-800">검사 {currentTestIndex + 1} 완료!</h1>
-          <p className="text-xl text-gray-600 mb-8">다음 검사: <span className="font-bold text-blue-600">{ASSESSMENT_SEQUENCE[currentTestIndex + 1]?.name}</span></p>
-          <div className="space-y-3 mb-4">
-            <button onClick={handleNextTest} className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-4 rounded-lg font-bold text-xl shadow-lg">다음 검사 시작</button>
-            <button onClick={handleExit} className="w-full bg-gray-500 text-white py-3 rounded-lg font-medium">검사 중단하고 홈으로</button>
+    const cellStatus = (testId: number) => {
+      const idx = testId - 1;
+      if (idx < doneCount) return { state: 'done' as const, grade: allResults[idx]?.classLevel };
+      if (idx === nextIndex) return { state: 'next' as const };
+      return { state: 'waiting' as const };
+    };
+
+    const renderCell = (testId: number) => {
+      const status = cellStatus(testId);
+      if (status.state === 'done') {
+        return (
+          <div className="bg-tt-card border border-tt-border-alt rounded-[10px] p-3 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[12.5px] font-bold text-[#1f9d57]">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1f9d57" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12l5 5 9-10" />
+              </svg>
+              완료
+            </span>
+            <span className="font-mono text-sm font-semibold text-tt-heading">
+              {status.grade}<span className="text-[11px] text-tt-light-muted">등급</span>
+            </span>
           </div>
-          <p className="text-sm text-gray-400">(또는 아무 키나 눌러주세요)</p>
+        );
+      }
+      if (status.state === 'next') {
+        return (
+          <div className="bg-tt-teal border-[1.5px] border-tt-teal rounded-[10px] p-3 flex items-center justify-between shadow-[0_6px_16px_rgba(15,110,120,.25)]">
+            <span className="text-[12.5px] font-extrabold text-white">{isWaiting ? '진행 중' : '다음'}</span>
+            <span className="font-mono text-xs font-semibold text-white/80">NOW</span>
+          </div>
+        );
+      }
+      return (
+        <div className="bg-tt-bg border border-dashed border-tt-border-alt rounded-[10px] p-3 flex items-center justify-center">
+          <span className="text-[12.5px] font-semibold text-tt-light-muted">대기</span>
         </div>
+      );
+    };
+
+    const handleStartNext = () => {
+      if (isWaiting) {
+        handleNextTest();
+      } else {
+        setCountdown(5);
+        setPhase('countdown');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-tt-card flex flex-col">
+        <AppHeader
+          serialStatus={{ isConnected: false, portPath: '' }}
+          userProfile={userProfile}
+          breadcrumb={{ parent: '활동 선택', current: '표준 검사', onParentClick: handleExit }}
+        />
+        <main className="flex-1 bg-tt-bg grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-5.5 p-[28px_30px] overflow-auto">
+          <div className="flex flex-col">
+            <div className="flex items-baseline justify-between mb-1.5">
+              <h2 className="m-0 text-xl font-extrabold text-tt-heading tracking-tight">표준 평가 배터리</h2>
+              <span className="font-mono text-xs text-tt-light-muted">BPM {BPM} 고정 · 8개 테스트</span>
+            </div>
+            <p className="m-0 mb-4 text-[13px] text-tt-muted">
+              4개 부위 × 시각/청각 자극 = 8개 표준화 테스트. 연령 기준표로 등급(1–7)을 산출합니다.
+            </p>
+
+            <div className="grid grid-cols-[150px_1fr_1fr] gap-2.5 items-center mb-2">
+              <div />
+              <div className="flex items-center justify-center gap-1.5 text-[12.5px] font-bold text-tt-muted">
+                <EyeIcon /> 시각
+              </div>
+              <div className="flex items-center justify-center gap-1.5 text-[12.5px] font-bold text-tt-muted">
+                <EarIcon /> 청각
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5 flex-1">
+              {ROW_CONFIG.map((row) => (
+                <div key={row.part} className="grid grid-cols-[150px_1fr_1fr] gap-2.5 items-stretch">
+                  <div className="flex items-center gap-2.5 bg-tt-card border border-tt-border-alt rounded-[10px] px-3.5">
+                    <span className="w-2.5 h-2.5 rounded-full flex-none" style={{ background: BODY_PART_HEX[row.part] }} />
+                    <span className="text-sm font-extrabold text-tt-heading">{row.label}</span>
+                  </div>
+                  {renderCell(row.audioId)}
+                  {renderCell(row.visualId)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="bg-tt-card border border-tt-border-alt rounded-xl p-5.5 text-center">
+              <div className="relative w-24 h-24 mx-auto mb-3.5">
+                <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="48" cy="48" r="42" fill="none" stroke="#e6eaed" strokeWidth={9} />
+                  <circle
+                    cx="48" cy="48" r="42" fill="none" stroke="#0f6e78" strokeWidth={9} strokeLinecap="round"
+                    strokeDasharray="263.9" strokeDashoffset={263.9 * (1 - doneCount / 8)}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-mono text-2xl font-semibold text-tt-heading leading-none">{doneCount}</span>
+                  <span className="text-[11px] text-tt-light-muted">/ 8</span>
+                </div>
+              </div>
+              <div className="text-[13px] text-tt-muted">완료한 검사</div>
+            </div>
+
+            <div className="bg-tt-card border border-tt-border-alt rounded-xl p-5 flex-1 flex flex-col">
+              <div className="font-mono text-[11px] tracking-wider text-tt-light-muted-alt font-semibold mb-3.5">NEXT TEST</div>
+              {nextTest && (
+                <>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="w-3.5 h-3.5 rounded-full" style={{ background: BODY_PART_HEX[`${nextTest.trainingRange}-${nextTest.bodyPart}` as CustomBodyPart] }} />
+                    <span className="text-xl font-extrabold text-tt-heading">{ROW_CONFIG.find((r) => `${nextTest.trainingRange}-${nextTest.bodyPart}` === r.part)?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[13px] text-tt-muted mb-auto">
+                    {nextTest.trainingType === 'audio' ? <EarIcon /> : <EyeIcon />}
+                    {nextTest.trainingType === 'audio' ? '청각' : '시각'} 자극 · {DURATION_SECONDS}초
+                  </div>
+                  <button
+                    onClick={handleStartNext}
+                    className="bg-tt-teal hover:bg-tt-teal-dark rounded-[10px] h-12.5 text-[15px] font-extrabold text-white flex items-center justify-center gap-2 mt-4 transition-all"
+                  >
+                    검사 시작 <span className="text-base">▶</span>
+                  </button>
+                </>
+              )}
+              {isWaiting && (
+                <p className="text-xs text-tt-light-muted text-center mt-3">(또는 Enter 키를 눌러주세요)</p>
+              )}
+              <button onClick={handleExit} className="mt-2 text-xs text-tt-light-muted hover:text-red-500 transition-colors">
+                검사 중단하고 홈으로
+              </button>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -505,6 +634,7 @@ export default function AssessmentPage() {
           isActive={false}
           currentSide={currentSide}
           currentFeedback={null}
+          currentFeedbackTypes={null}
           currentBeatData={undefined}
           nextBeatData={undefined}
           onLeftTouch={handleLeftTouch}
@@ -536,6 +666,7 @@ export default function AssessmentPage() {
       isActive={isActive}
       currentSide={currentSide}
       currentFeedback={currentFeedback}
+      currentFeedbackTypes={currentFeedbackTypes}
       currentBeatData={currentBeatData}
       nextBeatData={nextBeatData}
       onLeftTouch={handleLeftTouch}

@@ -7,6 +7,7 @@
 
 import type { InputType } from '@/types/evaluation';
 import { KEYBOARD_LABELS } from '@/config/inputMapping';
+import { BODY_PART_HEX } from '@/utils/bodyPartColors';
 
 interface TouchInputButtonsProps {
   onTouch: (inputType: InputType) => void;
@@ -37,16 +38,15 @@ export default function TouchInputButtons({
         <button
           onTouchStart={(e) => handleTouchStart(e, 'left-hand')}
           disabled={disabled}
+          style={{ background: BODY_PART_HEX['left-hand'] }}
           className={`flex-1 transition-all duration-150 ${
-            isExpected('left-hand')
-              ? 'bg-blue-500 border-4 border-yellow-300'
-              : 'bg-blue-700 border-2 border-blue-500'
-          } ${disabled ? 'opacity-50' : 'active:bg-blue-400'}`}
+            isExpected('left-hand') ? 'border-4 border-yellow-300' : 'border-2 border-black/20'
+          } ${disabled ? 'opacity-50' : ''}`}
         >
           <div className="flex flex-col items-center justify-center h-full">
             <div className="text-8xl mb-4">👈</div>
             <div className="text-white text-4xl font-bold mb-2">왼손</div>
-            <div className="bg-white text-blue-700 font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl">
+            <div className="bg-white font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl" style={{ color: BODY_PART_HEX['left-hand'] }}>
               {KEYBOARD_LABELS['left-hand']}
             </div>
           </div>
@@ -56,16 +56,15 @@ export default function TouchInputButtons({
         <button
           onTouchStart={(e) => handleTouchStart(e, 'right-hand')}
           disabled={disabled}
+          style={{ background: BODY_PART_HEX['right-hand'] }}
           className={`flex-1 transition-all duration-150 ${
-            isExpected('right-hand')
-              ? 'bg-blue-400 border-4 border-yellow-300'
-              : 'bg-blue-600 border-2 border-blue-400'
-          } ${disabled ? 'opacity-50' : 'active:bg-blue-300'}`}
+            isExpected('right-hand') ? 'border-4 border-yellow-300' : 'border-2 border-black/20'
+          } ${disabled ? 'opacity-50' : ''}`}
         >
           <div className="flex flex-col items-center justify-center h-full">
             <div className="text-8xl mb-4">👉</div>
             <div className="text-white text-4xl font-bold mb-2">오른손</div>
-            <div className="bg-white text-blue-600 font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl">
+            <div className="bg-white font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl" style={{ color: BODY_PART_HEX['right-hand'] }}>
               {KEYBOARD_LABELS['right-hand']}
             </div>
           </div>
@@ -78,16 +77,15 @@ export default function TouchInputButtons({
         <button
           onTouchStart={(e) => handleTouchStart(e, 'left-foot')}
           disabled={disabled}
+          style={{ background: BODY_PART_HEX['left-foot'] }}
           className={`flex-1 transition-all duration-150 ${
-            isExpected('left-foot')
-              ? 'bg-green-500 border-4 border-yellow-300'
-              : 'bg-green-700 border-2 border-green-500'
-          } ${disabled ? 'opacity-50' : 'active:bg-green-400'}`}
+            isExpected('left-foot') ? 'border-4 border-yellow-300' : 'border-2 border-black/20'
+          } ${disabled ? 'opacity-50' : ''}`}
         >
           <div className="flex flex-col items-center justify-center h-full">
             <div className="text-8xl mb-4">🦵</div>
             <div className="text-white text-4xl font-bold mb-2">왼발</div>
-            <div className="bg-white text-green-700 font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl">
+            <div className="bg-white font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl" style={{ color: BODY_PART_HEX['left-foot'] }}>
               {KEYBOARD_LABELS['left-foot']}
             </div>
           </div>
@@ -97,16 +95,15 @@ export default function TouchInputButtons({
         <button
           onTouchStart={(e) => handleTouchStart(e, 'right-foot')}
           disabled={disabled}
+          style={{ background: BODY_PART_HEX['right-foot'] }}
           className={`flex-1 transition-all duration-150 ${
-            isExpected('right-foot')
-              ? 'bg-green-400 border-4 border-yellow-300'
-              : 'bg-green-600 border-2 border-green-400'
-          } ${disabled ? 'opacity-50' : 'active:bg-green-300'}`}
+            isExpected('right-foot') ? 'border-4 border-yellow-300' : 'border-2 border-black/20'
+          } ${disabled ? 'opacity-50' : ''}`}
         >
           <div className="flex flex-col items-center justify-center h-full">
             <div className="text-8xl mb-4">🦵</div>
             <div className="text-white text-4xl font-bold mb-2">오른발</div>
-            <div className="bg-white text-green-600 font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl">
+            <div className="bg-white font-bold text-5xl px-8 py-4 rounded-2xl shadow-2xl" style={{ color: BODY_PART_HEX['right-foot'] }}>
               {KEYBOARD_LABELS['right-foot']}
             </div>
           </div>
@@ -161,11 +158,10 @@ export function CompactTouchButtons({
           <button
             onTouchStart={(e) => handleTouchStart(e, 'left-hand')}
             disabled={disabled}
+            style={{ background: BODY_PART_HEX['left-hand'] }}
             className={`p-6 rounded-xl font-bold text-2xl transition-all ${
-              isExpected('left-hand')
-                ? 'bg-blue-500 border-4 border-yellow-300 scale-105'
-                : 'bg-blue-600 border-2 border-blue-400'
-            } ${disabled ? 'opacity-50' : 'active:bg-blue-400'}`}
+              isExpected('left-hand') ? 'border-4 border-yellow-300 scale-105' : 'border-2 border-black/20'
+            } ${disabled ? 'opacity-50' : ''}`}
           >
             <div className="text-4xl mb-1">👈</div>
             <div className="text-white text-lg">왼손</div>
@@ -178,11 +174,10 @@ export function CompactTouchButtons({
           <button
             onTouchStart={(e) => handleTouchStart(e, 'right-hand')}
             disabled={disabled}
+            style={{ background: BODY_PART_HEX['right-hand'] }}
             className={`p-6 rounded-xl font-bold text-2xl transition-all ${
-              isExpected('right-hand')
-                ? 'bg-blue-400 border-4 border-yellow-300 scale-105'
-                : 'bg-blue-500 border-2 border-blue-300'
-            } ${disabled ? 'opacity-50' : 'active:bg-blue-300'}`}
+              isExpected('right-hand') ? 'border-4 border-yellow-300 scale-105' : 'border-2 border-black/20'
+            } ${disabled ? 'opacity-50' : ''}`}
           >
             <div className="text-4xl mb-1">👉</div>
             <div className="text-white text-lg">오른손</div>
@@ -197,11 +192,10 @@ export function CompactTouchButtons({
           <button
             onTouchStart={(e) => handleTouchStart(e, 'left-foot')}
             disabled={disabled}
+            style={{ background: BODY_PART_HEX['left-foot'] }}
             className={`p-6 rounded-xl font-bold text-2xl transition-all ${
-              isExpected('left-foot')
-                ? 'bg-green-500 border-4 border-yellow-300 scale-105'
-                : 'bg-green-600 border-2 border-green-400'
-            } ${disabled ? 'opacity-50' : 'active:bg-green-400'}`}
+              isExpected('left-foot') ? 'border-4 border-yellow-300 scale-105' : 'border-2 border-black/20'
+            } ${disabled ? 'opacity-50' : ''}`}
           >
             <div className="text-4xl mb-1">🦵</div>
             <div className="text-white text-lg">왼발</div>
@@ -214,11 +208,10 @@ export function CompactTouchButtons({
           <button
             onTouchStart={(e) => handleTouchStart(e, 'right-foot')}
             disabled={disabled}
+            style={{ background: BODY_PART_HEX['right-foot'] }}
             className={`p-6 rounded-xl font-bold text-2xl transition-all ${
-              isExpected('right-foot')
-                ? 'bg-green-400 border-4 border-yellow-300 scale-105'
-                : 'bg-green-500 border-2 border-green-300'
-            } ${disabled ? 'opacity-50' : 'active:bg-green-300'}`}
+              isExpected('right-foot') ? 'border-4 border-yellow-300 scale-105' : 'border-2 border-black/20'
+            } ${disabled ? 'opacity-50' : ''}`}
           >
             <div className="text-4xl mb-1">🦵</div>
             <div className="text-white text-lg">오른발</div>
